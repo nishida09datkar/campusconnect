@@ -1,0 +1,8 @@
+export const USE_MOCKS = import.meta.env.VITE_USE_MOCKS !== 'false';
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+export const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
+export const STUN_URL = import.meta.env.VITE_STUN_URL || 'stun:stun.l.google.com:19302';
+export const TURN_URL = import.meta.env.VITE_TURN_URL || '';
+export const TURN_USER = import.meta.env.VITE_TURN_USER || '';
+export const TURN_PASS = import.meta.env.VITE_TURN_PASS || '';
+export const MAX_UPLOAD_MB = Number(import.meta.env.VITE_MAX_UPLOAD_MB || '10');
