@@ -43,11 +43,14 @@ const NoticesPage = lazy(() => import('@/pages/hod/NoticesPage'));
 const FacultyDashboard = lazy(() => import('@/pages/faculty/FacultyDashboard'));
 const MyClassesPage = lazy(() => import('@/pages/faculty/MyClassesPage'));
 const ClassDetailPage = lazy(() => import('@/pages/faculty/ClassDetailPage'));
+const FacultyAssignmentsPage = lazy(() => import('@/pages/faculty/FacultyAssignmentsPage'));
+const SubmissionsPage = lazy(() => import('@/pages/faculty/SubmissionsPage'));
 
 // Student pages
 const StudentDashboard = lazy(() => import('@/pages/student/StudentDashboard'));
 const StudentClassesPage = lazy(() => import('@/pages/student/StudentClassesPage'));
 const StudentClassDetailPage = lazy(() => import('@/pages/student/StudentClassDetailPage'));
+const StudentAssignmentsPage = lazy(() => import('@/pages/student/StudentAssignmentsPage'));
 const AssignmentPage = lazy(() => import('@/pages/student/AssignmentPage'));
 
 // Shared pages
@@ -105,14 +108,19 @@ export const AppRoutes: React.FC = () => {
             <Route element={<ProtectedRoute allowedRoles={['FACULTY']} />}>
               <Route path="/faculty" element={<FacultyDashboard />} />
               <Route path="/faculty/classes" element={<MyClassesPage />} />
+              <Route path="/faculty/classes/:id" element={<ClassDetailPage />} />
               <Route path="/faculty/classes/:classId" element={<ClassDetailPage />} />
+              <Route path="/faculty/assignments" element={<FacultyAssignmentsPage />} />
+              <Route path="/faculty/assignments/:id/submissions" element={<SubmissionsPage />} />
             </Route>
 
             {/* STUDENT Protected Routes */}
             <Route element={<ProtectedRoute allowedRoles={['STUDENT']} />}>
               <Route path="/student" element={<StudentDashboard />} />
               <Route path="/student/classes" element={<StudentClassesPage />} />
+              <Route path="/student/classes/:id" element={<StudentClassDetailPage />} />
               <Route path="/student/classes/:classId" element={<StudentClassDetailPage />} />
+              <Route path="/student/assignments" element={<StudentAssignmentsPage />} />
               <Route path="/student/assignments/:id" element={<AssignmentPage />} />
             </Route>
 

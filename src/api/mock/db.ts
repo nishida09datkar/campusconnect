@@ -8,6 +8,7 @@ import {
   StreamPost,
   Assignment,
   Submission,
+  Material,
   Quiz,
   QuizAttempt,
   AttendanceRecord,
@@ -747,6 +748,43 @@ export const initialNotifications: AppNotification[] = [
   },
 ];
 
+// Initial Course Study Materials
+export const initialMaterials: Material[] = [
+  {
+    id: 'mat-1',
+    classId: 'class-1',
+    title: 'Unit 1: Modern JavaScript & ESNext Features',
+    description: 'Reference notes and cheat sheet covering arrow functions, destructuring, promises, and async/await.',
+    attachments: [
+      { id: 'att-m1', name: 'Unit1_ESNext_Reference.pdf', sizeKb: 840, mime: 'application/pdf', url: '#' },
+    ],
+    uploadedAt: '2026-09-18T10:00:00Z',
+    authorId: 'user-fac-neha',
+  },
+  {
+    id: 'mat-2',
+    classId: 'class-1',
+    title: 'Unit 2: React Component Architecture & Custom Hooks',
+    description: 'Lecture slides on custom hooks, memoization with useMemo/useCallback, and Context API.',
+    attachments: [
+      { id: 'att-m2', name: 'React_Hooks_DeepDive.pdf', sizeKb: 1450, mime: 'application/pdf', url: '#' },
+    ],
+    uploadedAt: '2026-09-22T14:30:00Z',
+    authorId: 'user-fac-neha',
+  },
+  {
+    id: 'mat-3',
+    classId: 'class-2',
+    title: 'Relational Algebra & Normalization Cheatsheet',
+    description: 'Complete examples of 1NF through BCNF with functional dependency proofs.',
+    attachments: [
+      { id: 'att-m3', name: 'Database_Normalization.pdf', sizeKb: 620, mime: 'application/pdf', url: '#' },
+    ],
+    uploadedAt: '2026-09-20T11:00:00Z',
+    authorId: 'user-fac-rohan',
+  },
+];
+
 // Live In-Memory Database Store (mutable arrays with deep copies)
 class MockDatabase {
   users = [...initialUsers];
@@ -758,6 +796,7 @@ class MockDatabase {
   streamPosts = [...initialStreamPosts];
   assignments = [...initialAssignments];
   submissions = [...initialSubmissions];
+  materials = [...initialMaterials];
   quizzes = [...initialQuizzes];
   quizAttempts = [...initialQuizAttempts];
   attendance = [...initialAttendance];
@@ -778,6 +817,7 @@ class MockDatabase {
     this.streamPosts = [...initialStreamPosts];
     this.assignments = [...initialAssignments];
     this.submissions = [...initialSubmissions];
+    this.materials = [...initialMaterials];
     this.quizzes = [...initialQuizzes];
     this.quizAttempts = [...initialQuizAttempts];
     this.attendance = [...initialAttendance];
@@ -790,3 +830,4 @@ class MockDatabase {
 }
 
 export const db = new MockDatabase();
+

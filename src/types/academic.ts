@@ -35,3 +35,6 @@ export interface Enrollment {
   studentId: string;
   classId: string;
 }
+
+export type Class = ClassRoom;
+

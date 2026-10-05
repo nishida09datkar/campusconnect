@@ -22,6 +22,7 @@ import {
   GraduationCap,
   Sparkles,
   GitBranch,
+  FileText,
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -70,6 +71,7 @@ export const Sidebar: React.FC = () => {
         return [
           { label: 'Dashboard', to: '/faculty', icon: LayoutDashboard },
           { label: 'My Classes', to: '/faculty/classes', icon: BookOpen },
+          { label: 'Assignments', to: '/faculty/assignments', icon: FileText },
           { label: 'Messages & Doubts', to: '/chat', icon: MessageSquare },
           { label: 'Calls & Office Hours', to: '/calls/history', icon: PhoneCall },
           { label: 'Schedule & Calendar', to: '/calendar', icon: Calendar },
@@ -78,6 +80,7 @@ export const Sidebar: React.FC = () => {
         return [
           { label: 'Dashboard', to: '/student', icon: LayoutDashboard },
           { label: 'My Classes', to: '/student/classes', icon: BookOpen },
+          { label: 'Assignments', to: '/student/assignments', icon: FileText },
           { label: 'Doubts & Chat', to: '/chat', icon: MessageSquare },
           { label: 'Call History', to: '/calls/history', icon: PhoneCall },
           { label: 'Class Schedule', to: '/calendar', icon: Calendar },

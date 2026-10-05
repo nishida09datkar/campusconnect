@@ -20,6 +20,7 @@ import {
   Bell,
   LogOut,
   GitBranch,
+  FileText,
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -64,6 +65,7 @@ export const MobileDrawer: React.FC = () => {
         return [
           { label: 'Dashboard', to: '/faculty', icon: LayoutDashboard },
           { label: 'My Classes', to: '/faculty/classes', icon: BookOpen },
+          { label: 'Assignments', to: '/faculty/assignments', icon: FileText },
           { label: 'Chat & Doubts', to: '/chat', icon: MessageSquare },
           { label: 'Call History', to: '/calls/history', icon: PhoneCall },
           { label: 'Calendar', to: '/calendar', icon: Calendar },
@@ -72,6 +74,7 @@ export const MobileDrawer: React.FC = () => {
         return [
           { label: 'Dashboard', to: '/student', icon: LayoutDashboard },
           { label: 'My Classes', to: '/student/classes', icon: BookOpen },
+          { label: 'Assignments', to: '/student/assignments', icon: FileText },
           { label: 'Chat', to: '/chat', icon: MessageSquare },
           { label: 'Call History', to: '/calls/history', icon: PhoneCall },
           { label: 'Calendar', to: '/calendar', icon: Calendar },

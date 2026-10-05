@@ -27,8 +27,40 @@ export interface Assignment {
   dueAt: string;
   maxMarks: number;
   attachments: Attachment[];
-  status?: 'DRAFT' | 'PUBLISHED';
+  status?: 'DRAFT' | 'PUBLISHED' | 'CLOSED';
 }
+
+export type ClassPost = StreamPost;
+
+export interface Material {
+  id: string;
+  classId: string;
+  title: string;
+  description?: string;
+  attachments: Attachment[];
+  uploadedAt: string;
+  authorId: string;
+}
+
+export interface StudentGradeItem {
+  assignmentId: string;
+  assignmentTitle: string;
+  maxMarks: number;
+  marks?: number;
+  status: SubmissionStatus;
+  submittedAt?: string;
+}
+
+export interface GradeOverview {
+  studentId: string;
+  studentName: string;
+  rollNo?: string;
+  grades: StudentGradeItem[];
+  totalMarksEarned: number;
+  totalPossibleMarks: number;
+  percentage: number;
+}
+
 
 export type SubmissionStatus = 'PENDING' | 'SUBMITTED' | 'LATE' | 'GRADED';
 
