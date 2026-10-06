@@ -55,6 +55,7 @@ export const Sidebar: React.FC = () => {
           { label: 'Users & Roles', to: '/admin/users', icon: Users },
           { label: 'Campus Analytics', to: '/admin/analytics', icon: BarChart3 },
           { label: 'Department Notices', to: '/hod/notices', icon: Bell },
+          { label: 'Academic Calendar', to: '/calendar', icon: Calendar },
           { label: 'Campus Chat', to: '/chat', icon: MessageSquare },
           { label: 'Call History', to: '/calls/history', icon: PhoneCall },
         ];

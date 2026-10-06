@@ -17,6 +17,7 @@ import {
   Message,
   CallLog,
   AppNotification,
+  CalendarEvent,
 } from '@/types';
 
 // Initial Departments
@@ -785,6 +786,65 @@ export const initialMaterials: Material[] = [
   },
 ];
 
+// Initial Calendar Events & Meetings
+export const initialCalendarEvents: CalendarEvent[] = [
+  {
+    id: 'evt-1',
+    title: 'CE Department Curriculum Review Meeting',
+    description: 'Discussion on Unit 3 syllabus coverage, lab benchmarks, and upcoming midterm evaluations.',
+    startTime: '2026-10-08T10:00:00Z',
+    endTime: '2026-10-08T11:30:00Z',
+    type: 'MEETING',
+    creatorId: 'user-hod-ce',
+    departmentId: 'dept-ce',
+    participantIds: ['user-hod-ce', 'user-fac-neha', 'user-fac-rohan', 'user-fac-anita'],
+    location: 'Seminar Hall B & Virtual Meet Room',
+  },
+  {
+    id: 'evt-2',
+    title: 'Lab 2: Redux Toolkit Store Submission',
+    description: 'Submission deadline for Web Development Lab 2 (CE301).',
+    startTime: '2026-10-09T23:59:00Z',
+    endTime: '2026-10-09T23:59:00Z',
+    type: 'ASSIGNMENT',
+    creatorId: 'user-fac-neha',
+    classId: 'class-1',
+    link: '/student/classes/class-1',
+  },
+  {
+    id: 'evt-3',
+    title: 'Live Lecture: React Hooks & State Machines',
+    description: 'Interactive session on custom hooks, performance tuning, and memoization patterns.',
+    startTime: '2026-10-10T09:30:00Z',
+    endTime: '2026-10-10T10:45:00Z',
+    type: 'LECTURE',
+    creatorId: 'user-fac-neha',
+    classId: 'class-1',
+    link: '/lecture/room-ce-301',
+  },
+  {
+    id: 'evt-4',
+    title: 'MCQ Assessment: Database Normalization',
+    description: 'Online timed quiz covering 1NF, 2NF, 3NF, and BCNF normalization algorithms.',
+    startTime: '2026-10-12T14:00:00Z',
+    endTime: '2026-10-12T15:00:00Z',
+    type: 'QUIZ',
+    creatorId: 'user-fac-rohan',
+    classId: 'class-2',
+    link: '/student/classes/class-2',
+  },
+  {
+    id: 'evt-5',
+    title: 'Annual Campus Technical Symposium & Hackathon',
+    description: 'Institute-wide 24hr project marathon open to all departments.',
+    startTime: '2026-10-15T09:00:00Z',
+    endTime: '2026-10-16T17:00:00Z',
+    type: 'EVENT',
+    creatorId: 'user-admin',
+    location: 'Campus Auditorium & Tech Park',
+  },
+];
+
 // Live In-Memory Database Store (mutable arrays with deep copies)
 class MockDatabase {
   users = [...initialUsers];
@@ -805,6 +865,7 @@ class MockDatabase {
   messages = [...initialMessages];
   callLogs = [...initialCallLogs];
   notifications = [...initialNotifications];
+  events = [...initialCalendarEvents];
 
   // Helper method to reset to pristine seed state if needed
   reset() {
@@ -826,6 +887,7 @@ class MockDatabase {
     this.messages = [...initialMessages];
     this.callLogs = [...initialCallLogs];
     this.notifications = [...initialNotifications];
+    this.events = [...initialCalendarEvents];
   }
 }
 

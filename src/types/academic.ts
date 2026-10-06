@@ -36,5 +36,21 @@ export interface Enrollment {
   classId: string;
 }
 
-export type Class = ClassRoom;
+export interface DepartmentWithDetails extends Department {
+  hodName?: string;
+  hodEmail?: string;
+  facultyCount?: number;
+  studentCount?: number;
+  courseCount?: number;
+}
 
+export interface FacultyAllocationWithDetails extends FacultyAllocation {
+  facultyName?: string;
+  facultyEmail?: string;
+  facultyDesignation?: string;
+  courseCode?: string;
+  courseTitle?: string;
+  courseYear?: number;
+}
+
+export type Class = ClassRoom;

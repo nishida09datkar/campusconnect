@@ -6,11 +6,13 @@ export interface Attachment {
   url: string;
 }
 
+export type NoticeAudience = 'ALL' | 'FACULTY' | 'STUDENTS';
+
 export interface Announcement {
   id: string;
   senderId: string;
   departmentId?: string;
-  audience: 'ALL' | 'FACULTY' | 'STUDENTS';
+  audience: NoticeAudience;
   year?: number;
   classId?: string;
   title: string;
@@ -18,6 +20,8 @@ export interface Announcement {
   createdAt: string;
   attachments?: Attachment[];
 }
+
+export type Notice = Announcement;
 
 export type NotificationType =
   | 'NOTICE'

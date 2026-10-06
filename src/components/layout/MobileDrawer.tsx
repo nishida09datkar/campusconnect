@@ -49,6 +49,7 @@ export const MobileDrawer: React.FC = () => {
           { label: 'Users & Roles', to: '/admin/users', icon: Users },
           { label: 'Analytics', to: '/admin/analytics', icon: BarChart3 },
           { label: 'Notices', to: '/hod/notices', icon: Bell },
+          { label: 'Calendar', to: '/calendar', icon: Calendar },
           { label: 'Chat', to: '/chat', icon: MessageSquare },
           { label: 'Calls', to: '/calls/history', icon: PhoneCall },
         ];

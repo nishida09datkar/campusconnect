@@ -209,5 +209,10 @@ export const classroomService = {
     await delay(80, 150);
     return [...db.courses];
   },
+
+  async getAllClasses(): Promise<ClassRoom[]> {
+    await delay(80, 150);
+    return [...db.classes];
+  },
 };
 

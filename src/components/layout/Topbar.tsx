@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { selectCurrentUser } from '@/features/auth/authSelectors';
@@ -6,7 +6,8 @@ import { logoutUser } from '@/features/auth/authSlice';
 import { toggleTheme, setMobileDrawerOpen } from '@/features/ui/uiSlice';
 import { Avatar } from '../ui/Avatar';
 import { RoleBadge } from '../common/RoleBadge';
-import { db } from '@/api/mock/db';
+import { notificationService } from '@/api/services/notification.service';
+import { AppNotification } from '@/types';
 import { formatRelativeTime } from '@/utils/format';
 import {
   Search,
@@ -18,6 +19,7 @@ import {
   LogOut,
   ExternalLink,
   CheckCheck,
+  Loader2,
 } from 'lucide-react';
 
 export const Topbar: React.FC = () => {
@@ -29,9 +31,36 @@ export const Topbar: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [unreadCount, setUnreadCount] = useState<number>(0);
+  const [isLoadingNotifs, setIsLoadingNotifs] = useState<boolean>(false);
 
   const notifRef = useRef<HTMLDivElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
+
+  // Fetch notifications for the logged in user via service
+  const loadNotifications = useCallback(async () => {
+    if (!user) return;
+    try {
+      const userNotifs = await notificationService.getUserNotifications(user.id);
+      setNotifications(userNotifs.slice(0, 5));
+      const unread = await notificationService.getUnreadCount(user.id);
+      setUnreadCount(unread);
+    } catch (err) {
+      console.error('Failed to load notifications in topbar:', err);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    loadNotifications();
+
+    // Subscribe to real-time notification changes (Section 8.8 requirement)
+    const unsubscribe = notificationService.subscribe(() => {
+      loadNotifications();
+    });
+
+    return () => unsubscribe();
+  }, [loadNotifications]);
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -49,15 +78,36 @@ export const Topbar: React.FC = () => {
 
   if (!user) return null;
 
-  // Mock notifications for this user (or institute-wide)
-  const notifications = db.notifications
-    .filter((n) => n.userId === user.id || n.userId === 'user-admin')
-    .slice(0, 5);
-  const unreadCount = notifications.filter((n) => !n.read).length;
-
   const handleLogout = async () => {
     await dispatch(logoutUser());
     navigate('/login');
+  };
+
+  const handleNotificationClick = async (notif: AppNotification) => {
+    try {
+      if (!notif.read) {
+        await notificationService.markAsRead(notif.id);
+      }
+    } catch (err) {
+      console.error('Error marking notification as read:', err);
+    }
+    setShowNotifications(false);
+    if (notif.link) {
+      navigate(notif.link);
+    }
+  };
+
+  const handleMarkAllRead = async () => {
+    if (!user) return;
+    setIsLoadingNotifs(true);
+    try {
+      await notificationService.markAllAsRead(user.id);
+      await loadNotifications();
+    } catch (err) {
+      console.error('Error marking all notifications read:', err);
+    } finally {
+      setIsLoadingNotifs(false);
+    }
   };
 
   return (
@@ -94,7 +144,7 @@ export const Topbar: React.FC = () => {
           aria-label="Toggle theme"
           title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
         >
-          {theme === 'dark' ? <Sun className="w-5 h-5 text-amber-400" /> : <Moon className="w-5 h-5" />}
+          {theme === 'dark' ? <Sun className="w-5 h-5 text-amber-400" /> : <Moon className="w-5 h-5 text-foreground/80" />}
         </button>
 
         {/* Notifications Dropdown */}
@@ -106,7 +156,10 @@ export const Topbar: React.FC = () => {
           >
             <Bell className="w-5 h-5" />
             {unreadCount > 0 && (
-              <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-rose-500 ring-2 ring-card animate-pulse" />
+              <span
+                data-testid="notification-badge"
+                className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-rose-500 ring-2 ring-card animate-pulse"
+              />
             )}
           </button>
 
@@ -116,7 +169,10 @@ export const Topbar: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <h4 className="text-sm font-semibold text-foreground">Notifications</h4>
                   {unreadCount > 0 && (
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-primary-500/10 text-primary-600">
+                    <span
+                      data-testid="unread-count-chip"
+                      className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-primary-500/10 text-primary-600 dark:text-primary-400"
+                    >
                       {unreadCount} new
                     </span>
                   )}
@@ -142,13 +198,13 @@ export const Topbar: React.FC = () => {
                       className={`p-3.5 hover:bg-muted/40 transition-colors flex items-start gap-3 cursor-pointer ${
                         !notif.read ? 'bg-primary-500/5' : ''
                       }`}
-                      onClick={() => {
-                        notif.read = true;
-                        setShowNotifications(false);
-                        if (notif.link) navigate(notif.link);
-                      }}
+                      onClick={() => handleNotificationClick(notif)}
                     >
-                      <div className="w-2 h-2 rounded-full bg-primary-600 mt-1.5 shrink-0" />
+                      <div
+                        className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${
+                          !notif.read ? 'bg-primary-600' : 'bg-transparent'
+                        }`}
+                      />
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-semibold text-foreground truncate">
                           {notif.title}
@@ -167,13 +223,16 @@ export const Topbar: React.FC = () => {
 
               <div className="p-2 border-t border-border bg-muted/20 text-center">
                 <button
-                  onClick={() => {
-                    notifications.forEach((n) => (n.read = true));
-                    setShowNotifications(false);
-                  }}
-                  className="text-xs text-muted-foreground hover:text-foreground font-medium inline-flex items-center gap-1.5"
+                  onClick={handleMarkAllRead}
+                  disabled={isLoadingNotifs || unreadCount === 0}
+                  className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-50 font-medium inline-flex items-center gap-1.5"
                 >
-                  <CheckCheck className="w-3.5 h-3.5" /> Mark all read
+                  {isLoadingNotifs ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <CheckCheck className="w-3.5 h-3.5" />
+                  )}
+                  Mark all read
                 </button>
               </div>
             </div>
@@ -227,3 +286,5 @@ export const Topbar: React.FC = () => {
     </header>
   );
 };
+
+export default Topbar;
