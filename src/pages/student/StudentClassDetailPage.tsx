@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { selectCurrentUser } from '@/features/auth/authSelectors';
 import { addToast } from '@/features/ui/uiSlice';
@@ -8,6 +8,7 @@ import { assignmentService } from '@/api/services/assignment.service';
 import { submissionService } from '@/api/services/submission.service';
 import { attendanceService, StudentAttendanceSummary } from '@/api/services/attendance.service';
 import { materialService } from '@/api/services/material.service';
+import { chatService } from '@/api/services/chat.service';
 import {
   User,
   StreamPost,
@@ -54,6 +55,7 @@ export const StudentClassDetailPage: React.FC = () => {
   const { id, classId: paramClassId } = useParams<{ id?: string; classId?: string }>();
   const classId = id || paramClassId || '';
 
+  const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const user = useAppSelector(selectCurrentUser);
 
@@ -172,6 +174,18 @@ export const StudentClassDetailPage: React.FC = () => {
       dispatch(addToast({ type: 'error', message: 'Failed to post question' }));
     } finally {
       setIsAskingDoubt(false);
+    }
+  };
+
+  // STREAM: Doubt to chat bridge
+  const handleMessageFaculty = async () => {
+    if (!cls?.facultyId || !user) return;
+    try {
+      const conv = await chatService.getOrCreateDirectConversation(user.id, cls.facultyId);
+      navigate(`/chat/${conv.id}`);
+    } catch (err: unknown) {
+      const msg = err && typeof err === 'object' && 'message' in err ? String((err as { message: unknown }).message) : 'Cannot message faculty';
+      dispatch(addToast({ type: 'error', message: msg }));
     }
   };
 
@@ -378,6 +392,20 @@ export const StudentClassDetailPage: React.FC = () => {
                       </p>
                     </div>
                   </div>
+
+                  {/* Doubt-to-Chat Bridge Action */}
+                  {post.type === 'DOUBT' && cls?.facultyId && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-8 text-xs gap-1.5 border-primary-500/30 text-primary-600 hover:bg-primary-500/10 shrink-0"
+                      onClick={handleMessageFaculty}
+                      data-testid="message-faculty-btn"
+                    >
+                      <MessageSquare className="w-3.5 h-3.5" />
+                      <span>Message faculty</span>
+                    </Button>
+                  )}
                 </div>
 
                 <div className="text-sm text-foreground/90 whitespace-pre-wrap leading-relaxed pl-13">

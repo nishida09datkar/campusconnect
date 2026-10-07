@@ -11,3 +11,5 @@ export * from './allocation.service';
 export * from './notice.service';
 export * from './notification.service';
 export * from './calendar.service';
+export * from './chat.service';
+export * from './presence.service';
