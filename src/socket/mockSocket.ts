@@ -1,5 +1,4 @@
 import { SocketEventMap, ChatSendPayload, ChatTypingPayload, ChatReadPayload } from './events';
-import { db } from '@/api/mock/db';
 import { chatService } from '@/api/services/chat.service';
 import { presenceService } from '@/api/services/presence.service';
 
@@ -9,10 +8,26 @@ class MockSocket {
   public connected: boolean = false;
   private listeners: Map<string, Set<Listener>> = new Map();
   private presenceInterval: NodeJS.Timeout | null = null;
-  private pendingReplyTimeouts: NodeJS.Timeout[] = [];
+  private channel: BroadcastChannel | null = null;
 
   constructor() {
+    this.initBroadcastChannel();
     this.connect();
+  }
+
+  private initBroadcastChannel(): void {
+    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+      try {
+        this.channel = new BroadcastChannel('campusconnect_socket_channel');
+        this.channel.onmessage = (e) => {
+          if (e.data && e.data.event) {
+            this.triggerLocal(e.data.event, ...(e.data.args || []));
+          }
+        };
+      } catch (err) {
+        console.warn('BroadcastChannel initialization skipped:', err);
+      }
+    }
   }
 
   connect(): this {
@@ -29,9 +44,15 @@ class MockSocket {
   disconnect(): this {
     this.connected = false;
     this.stopPresenceSimulation();
-    this.pendingReplyTimeouts.forEach(clearTimeout);
-    this.pendingReplyTimeouts = [];
     this.trigger('disconnect', 'client disconnect');
+    if (this.channel) {
+      try {
+        this.channel.close();
+      } catch {
+        // Ignore
+      }
+      this.channel = null;
+    }
     return this;
   }
 
@@ -53,7 +74,22 @@ class MockSocket {
     return this;
   }
 
+  /**
+   * Triggers local listeners and broadcasts to other tabs/windows
+   */
   private trigger(event: string, ...args: unknown[]): void {
+    this.triggerLocal(event, ...args);
+
+    if (this.channel && event !== 'connect' && event !== 'disconnect') {
+      try {
+        this.channel.postMessage({ event, args });
+      } catch (err) {
+        console.warn('BroadcastChannel postMessage error:', err);
+      }
+    }
+  }
+
+  private triggerLocal(event: string, ...args: unknown[]): void {
     const handlers = this.listeners.get(event);
     if (handlers) {
       handlers.forEach((h) => {
@@ -98,84 +134,17 @@ class MockSocket {
         message: savedMessage,
       });
 
-      // 2. Emit message to conversation subscribers
+      // 2. Emit message to conversation subscribers (both locally and across tabs)
       this.trigger('chat:message', savedMessage);
-
-      // 3. Check if simulated reply should be triggered for seeded contacts
-      this.maybeScheduleReply(payload.conversationId, payload.senderId, payload.body);
     } catch (err: unknown) {
       console.error('MockSocket handleSend error:', err);
-      // Emit ack failure if needed (or keep pending/fail in caller)
     }
-  }
-
-  private maybeScheduleReply(conversationId: string, senderId: string, _userMessageBody: string): void {
-    const conv = db.conversations.find((c) => c.id === conversationId);
-    if (!conv || conv.type !== 'DIRECT') return;
-
-    const recipientId = conv.memberIds.find((id) => id !== senderId);
-    if (!recipientId) return;
-
-    const recipient = db.users.find((u) => u.id === recipientId);
-    if (!recipient) return;
-
-    // List of simulated replies based on recipient role
-    const getSimulatedReply = (): string => {
-      if (recipient.role === 'FACULTY') {
-        const replies = [
-          `Thank you for reaching out. I've noted this regarding the class material and will review it before tomorrow's lecture.`,
-          `Good question. Please make sure to cross-check the reference notes in the LMS module. Feel free to stop by during office hours if you need further help!`,
-          `Got it! Let's discuss this briefly in the next class session as well so everyone can benefit from the explanation.`,
-        ];
-        return replies[Math.floor(Math.random() * replies.length)];
-      }
-
-      if (recipient.role === 'HOD') {
-        return `Acknowledged. Please submit the departmental documentation so we can review it during the weekly council.`;
-      }
-
-      // Student reply
-      return `Hey! Thanks for sharing this. Let me check the code and try it out on my branch.`;
-    };
-
-    // 1. Start typing after 500-800ms
-    const typingTimer = setTimeout(() => {
-      this.trigger('chat:typing', {
-        conversationId,
-        userId: recipientId,
-        isTyping: true,
-      });
-    }, 600);
-    this.pendingReplyTimeouts.push(typingTimer);
-
-    // 2. Send reply after 1.8 - 2.6 seconds
-    const replyDelay = 1800 + Math.floor(Math.random() * 800);
-    const replyTimer = setTimeout(async () => {
-      // Turn off typing
-      this.trigger('chat:typing', {
-        conversationId,
-        userId: recipientId,
-        isTyping: false,
-      });
-
-      try {
-        const replyMessage = await chatService.sendMessage(
-          conversationId,
-          recipientId,
-          getSimulatedReply()
-        );
-        this.trigger('chat:message', replyMessage);
-      } catch (err) {
-        console.error('Failed to dispatch simulated reply:', err);
-      }
-    }, replyDelay);
-    this.pendingReplyTimeouts.push(replyTimer);
   }
 
   private startPresenceSimulation(): void {
     this.stopPresenceSimulation();
 
-    // Pool of users whose presence toggles occasionally to demonstrate real-time presence
+    // Pool of users whose presence toggles occasionally
     const togglePool = ['user-fac-rohan', 'user-stu-2', 'user-fac-anita'];
     let toggleIndex = 0;
 

@@ -168,6 +168,7 @@ export const classroomService = {
     };
 
     db.streamPosts.unshift(newPost);
+    db.persistStream();
     const author = db.users.find((u) => u.id === authorId);
     return { ...newPost, author };
   },
@@ -191,6 +192,7 @@ export const classroomService = {
     };
 
     post.replies.push(newReply);
+    db.persistStream();
     const author = db.users.find((u) => u.id === authorId);
     return { ...newReply, author };
   },
@@ -202,6 +204,7 @@ export const classroomService = {
       throw new Error(`Post ${postId} not found`);
     }
     post.resolved = !post.resolved;
+    db.persistStream();
     return { ...post };
   },
 

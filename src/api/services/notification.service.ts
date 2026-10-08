@@ -43,6 +43,7 @@ export const notificationService = {
       throw { status: 404, message: 'Notification not found' };
     }
     notif.read = true;
+    db.persistNotifications();
     this.emitChange();
     return { ...notif };
   },
@@ -56,6 +57,7 @@ export const notificationService = {
         count++;
       }
     });
+    db.persistNotifications();
     this.emitChange();
     return { count };
   },
@@ -72,6 +74,7 @@ export const notificationService = {
       createdAt: new Date().toISOString(),
     };
     db.notifications.unshift(newNotif);
+    db.persistNotifications();
     this.emitChange();
     return { ...newNotif };
   },

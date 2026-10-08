@@ -127,6 +127,7 @@ export const chatService = {
     };
 
     db.conversations.unshift(newConv);
+    db.persistMessages();
     return { ...newConv };
   },
 
@@ -180,6 +181,7 @@ export const chatService = {
     };
 
     db.conversations.unshift(newGroup);
+    db.persistMessages();
     return { ...newGroup };
   },
 
@@ -286,6 +288,7 @@ export const chatService = {
 
     db.messages.push(newMessage);
     conv.lastMessage = newMessage;
+    db.persistMessages();
 
     // Create notification for other members
     const recipientIds = conv.memberIds.filter((id) => id !== senderId);
@@ -330,6 +333,7 @@ export const chatService = {
     });
 
     conv.unreadCount = 0;
+    db.persistMessages();
     return { conversationId, readCount };
   },
 
@@ -349,6 +353,7 @@ export const chatService = {
     }
 
     conv.memberIds = conv.memberIds.filter((id) => id !== userId);
+    db.persistMessages();
     return true;
   },
 

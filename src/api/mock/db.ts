@@ -845,7 +845,26 @@ export const initialCalendarEvents: CalendarEvent[] = [
   },
 ];
 
-// Live In-Memory Database Store (mutable arrays with deep copies)
+const loadFromStorage = <T>(key: string, fallback: T): T => {
+  if (typeof window === 'undefined') return fallback;
+  try {
+    const raw = localStorage.getItem(`campusconnect_db_${key}`);
+    return raw ? (JSON.parse(raw) as T) : fallback;
+  } catch {
+    return fallback;
+  }
+};
+
+const saveToStorage = (key: string, data: unknown) => {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(`campusconnect_db_${key}`, JSON.stringify(data));
+  } catch {
+    // Ignore quota issues
+  }
+};
+
+// Live Database Store (mutable arrays backed by localStorage for multi-session sync)
 class MockDatabase {
   users = [...initialUsers];
   departments = [...initialDepartments];
@@ -853,7 +872,7 @@ class MockDatabase {
   allocations = [...initialAllocations];
   classes = [...initialClasses];
   enrollments = [...initialEnrollments];
-  streamPosts = [...initialStreamPosts];
+  streamPosts = loadFromStorage('streamPosts', [...initialStreamPosts]);
   assignments = [...initialAssignments];
   submissions = [...initialSubmissions];
   materials = [...initialMaterials];
@@ -861,14 +880,37 @@ class MockDatabase {
   quizAttempts = [...initialQuizAttempts];
   attendance = [...initialAttendance];
   announcements = [...initialAnnouncements];
-  conversations = [...initialConversations];
-  messages = [...initialMessages];
+  conversations = loadFromStorage('conversations', [...initialConversations]);
+  messages = loadFromStorage('messages', [...initialMessages]);
   callLogs = [...initialCallLogs];
-  notifications = [...initialNotifications];
+  notifications = loadFromStorage('notifications', [...initialNotifications]);
   events = [...initialCalendarEvents];
+
+  persistMessages(): void {
+    saveToStorage('messages', this.messages);
+    saveToStorage('conversations', this.conversations);
+  }
+
+  persistStream(): void {
+    saveToStorage('streamPosts', this.streamPosts);
+  }
+
+  persistNotifications(): void {
+    saveToStorage('notifications', this.notifications);
+  }
 
   // Helper method to reset to pristine seed state if needed
   reset() {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem('campusconnect_db_messages');
+        localStorage.removeItem('campusconnect_db_conversations');
+        localStorage.removeItem('campusconnect_db_notifications');
+        localStorage.removeItem('campusconnect_db_streamPosts');
+      } catch {
+        // Ignore
+      }
+    }
     this.users = [...initialUsers];
     this.departments = [...initialDepartments];
     this.courses = [...initialCourses];
