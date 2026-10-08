@@ -1,15 +1,21 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { selectCurrentUser } from '@/features/auth/authSelectors';
 import { addToast } from '@/features/ui/uiSlice';
 import { notificationService } from '@/api/services/notification.service';
-import { AppNotification, NotificationType } from '@/types';
+import { AppNotification, NotificationType, Announcement } from '@/types';
+import { db } from '@/api/mock/db';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
+import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Skeleton } from '@/components/ui/Skeleton';
-import { formatRelativeTime } from '@/utils/format';
+import { Dialog } from '@/components/ui/Dialog';
+import { Avatar } from '@/components/ui/Avatar';
+import { Badge } from '@/components/ui/Badge';
+import { RoleBadge } from '@/components/common/RoleBadge';
+import { formatRelativeTime, formatDate } from '@/utils/format';
+import { sanitizeHtml } from '@/utils/sanitize';
 import {
   Bell,
   CheckCheck,
@@ -23,10 +29,13 @@ import {
   AlertCircle,
   RefreshCw,
   ExternalLink,
+  Paperclip,
+  Download,
 } from 'lucide-react';
 
 export const NotificationsPage: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const dispatch = useAppDispatch();
   const user = useAppSelector(selectCurrentUser);
 
@@ -36,6 +45,7 @@ export const NotificationsPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isMarkingAll, setIsMarkingAll] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedNotice, setSelectedNotice] = useState<Announcement | null>(null);
 
   const loadNotifications = useCallback(async () => {
     if (!user) return;
@@ -65,6 +75,17 @@ export const NotificationsPage: React.FC = () => {
     return () => unsubscribe();
   }, [loadNotifications]);
 
+  // Open notice automatically if noticeId is present in URL
+  useEffect(() => {
+    const noticeId = searchParams.get('noticeId');
+    if (noticeId) {
+      const found = db.announcements.find((a) => a.id === noticeId);
+      if (found) {
+        setSelectedNotice(found);
+      }
+    }
+  }, [searchParams]);
+
   const handleMarkAsRead = async (notif: AppNotification, e: React.MouseEvent) => {
     e.stopPropagation();
     if (notif.read) return;
@@ -88,22 +109,70 @@ export const NotificationsPage: React.FC = () => {
         })
       );
       await loadNotifications();
-    } catch (err: unknown) {
+    } catch {
       dispatch(addToast({ type: 'error', message: 'Failed to mark all as read' }));
     } finally {
       setIsMarkingAll(false);
     }
   };
 
+  const findNoticeForNotification = (notif: AppNotification): Announcement | null => {
+    // 1. By noticeId query param
+    if (notif.link && notif.link.includes('noticeId=')) {
+      const id = notif.link.split('noticeId=')[1]?.split('&')[0];
+      const found = db.announcements.find((a) => a.id === id);
+      if (found) return found;
+    }
+
+    // 2. Exact title match
+    const exact = db.announcements.find(
+      (a) => a.title.trim().toLowerCase() === notif.title.trim().toLowerCase()
+    );
+    if (exact) return exact;
+
+    // 3. Partial title match
+    const partial = db.announcements.find(
+      (a) =>
+        a.title.toLowerCase().includes(notif.title.toLowerCase()) ||
+        notif.title.toLowerCase().includes(a.title.toLowerCase())
+    );
+    if (partial) return partial;
+
+    return null;
+  };
+
   const handleItemClick = async (notif: AppNotification) => {
     if (!notif.read) {
       try {
         await notificationService.markAsRead(notif.id);
+        setNotifications((prev) =>
+          prev.map((n) => (n.id === notif.id ? { ...n, read: true } : n))
+        );
       } catch (err) {
         console.error(err);
       }
     }
-    if (notif.link) {
+
+    if (notif.type === 'NOTICE') {
+      const notice = findNoticeForNotification(notif);
+      if (notice) {
+        setSelectedNotice(notice);
+      } else {
+        // Fallback using notification fields
+        setSelectedNotice({
+          id: notif.id,
+          title: notif.title,
+          body: notif.body,
+          audience: 'ALL',
+          senderId: 'user-hod-ce',
+          createdAt: notif.createdAt,
+          attachments: [],
+        });
+      }
+      return;
+    }
+
+    if (notif.link && !notif.link.startsWith('/notifications')) {
       navigate(notif.link);
     }
   };
@@ -125,6 +194,11 @@ export const NotificationsPage: React.FC = () => {
       default:
         return <Bell className="w-4 h-4 text-primary-500" />;
     }
+  };
+
+  const getAuthor = (senderId?: string) => {
+    if (!senderId) return null;
+    return db.users.find((u) => u.id === senderId) || null;
   };
 
   // Filtered notifications
@@ -179,36 +253,34 @@ export const NotificationsPage: React.FC = () => {
             ))}
           </div>
 
-          {/* Unread Only Toggle */}
-          <div className="flex items-center gap-2">
-            <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-foreground select-none">
-              <input
-                type="checkbox"
-                checked={onlyUnread}
-                onChange={(e) => setOnlyUnread(e.target.checked)}
-                className="w-4 h-4 rounded text-primary-600 focus:ring-primary border-border bg-card"
-              />
-              <span>Unread Only ({unreadCount})</span>
-            </label>
-          </div>
+          {/* Unread Toggle */}
+          <label className="flex items-center gap-2 cursor-pointer select-none text-xs text-muted-foreground hover:text-foreground shrink-0">
+            <input
+              type="checkbox"
+              checked={onlyUnread}
+              onChange={(e) => setOnlyUnread(e.target.checked)}
+              className="w-4 h-4 rounded border-input text-primary-600 focus:ring-primary-500"
+            />
+            <span>Unread Only ({unreadCount})</span>
+          </label>
         </CardContent>
       </Card>
 
-      {/* Notification List Card */}
+      {/* Notifications List Card */}
       <Card>
-        <CardHeader className="pb-3 border-b border-border/60">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Bell className="w-4 h-4 text-primary-500" />
+        <div className="p-4 border-b border-border flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Bell className="w-4 h-4 text-primary-500" />
+            <h3 className="text-sm font-bold text-foreground">
               Notifications ({filteredNotifications.length})
-            </CardTitle>
-            {unreadCount > 0 && (
-              <span className="px-2.5 py-0.5 rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-400 text-xs font-bold">
-                {unreadCount} unread
-              </span>
-            )}
+            </h3>
           </div>
-        </CardHeader>
+          {unreadCount > 0 && (
+            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-primary-500/10 text-primary-600 dark:text-primary-400">
+              {unreadCount} unread
+            </span>
+          )}
+        </div>
 
         <CardContent className="p-0">
           {isLoading ? (
@@ -246,6 +318,7 @@ export const NotificationsPage: React.FC = () => {
                   className={`p-4 sm:p-5 transition-colors flex items-start gap-4 cursor-pointer hover:bg-muted/40 ${
                     !notif.read ? 'bg-primary-500/5' : ''
                   }`}
+                  data-testid={`notification-item-${notif.id}`}
                 >
                   {/* Icon Box */}
                   <div
@@ -284,11 +357,9 @@ export const NotificationsPage: React.FC = () => {
                       </span>
 
                       <div className="flex items-center gap-2">
-                        {notif.link && (
-                          <span className="text-[11px] text-primary-600 dark:text-primary-400 font-semibold flex items-center gap-1 hover:underline">
-                            View details <ExternalLink className="w-3 h-3" />
-                          </span>
-                        )}
+                        <span className="text-[11px] text-primary-600 dark:text-primary-400 font-semibold flex items-center gap-1 hover:underline">
+                          View details <ExternalLink className="w-3 h-3" />
+                        </span>
                         {!notif.read && (
                           <button
                             onClick={(e) => handleMarkAsRead(notif, e)}
@@ -307,6 +378,121 @@ export const NotificationsPage: React.FC = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Complete Notice Detail Dialog */}
+      <Dialog
+        isOpen={Boolean(selectedNotice)}
+        onClose={() => {
+          setSelectedNotice(null);
+          if (searchParams.has('noticeId')) {
+            const nextParams = new URLSearchParams(searchParams);
+            nextParams.delete('noticeId');
+            setSearchParams(nextParams, { replace: true });
+          }
+        }}
+        title={selectedNotice?.title || 'Notice Details'}
+        description={
+          selectedNotice
+            ? `Published on ${formatDate(selectedNotice.createdAt, 'MMMM d, yyyy • h:mm a')}`
+            : ''
+        }
+        className="max-w-2xl"
+      >
+        {selectedNotice && (
+          <div className="space-y-4" data-testid="notice-detail-dialog">
+            {/* Header Meta: Author / Department / Audience */}
+            <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-xl bg-muted/40 border border-border">
+              <div className="flex items-center gap-3">
+                <Avatar
+                  src={getAuthor(selectedNotice.senderId)?.avatarUrl}
+                  name={getAuthor(selectedNotice.senderId)?.name || 'Campus Administration'}
+                  size="md"
+                />
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-foreground">
+                      {getAuthor(selectedNotice.senderId)?.name || 'Campus Administration'}
+                    </span>
+                    {getAuthor(selectedNotice.senderId) && (
+                      <RoleBadge role={getAuthor(selectedNotice.senderId)!.role} size="sm" />
+                    )}
+                  </div>
+                  <span className="text-[11px] text-muted-foreground">
+                    {getAuthor(selectedNotice.senderId)?.designation ||
+                      (selectedNotice.departmentId ? 'Department Notice' : 'Campus-Wide Announcement')}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <Badge variant="outline" className="text-[10px] font-semibold">
+                  Audience: {selectedNotice.audience}
+                  {selectedNotice.year ? ` (Year ${selectedNotice.year})` : ''}
+                </Badge>
+                {selectedNotice.departmentId && (
+                  <Badge variant="secondary" className="text-[10px]">
+                    {selectedNotice.departmentId.toUpperCase()}
+                  </Badge>
+                )}
+              </div>
+            </div>
+
+            {/* Complete Notice Body */}
+            <div
+              className="p-4 rounded-xl border border-border bg-card text-foreground text-sm leading-relaxed whitespace-pre-wrap select-text max-h-[50vh] overflow-y-auto"
+              dangerouslySetInnerHTML={{
+                __html: sanitizeHtml(selectedNotice.body),
+              }}
+            />
+
+            {/* Attachments (if any) */}
+            {selectedNotice.attachments && selectedNotice.attachments.length > 0 && (
+              <div className="space-y-2 pt-2 border-t border-border">
+                <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+                  <Paperclip className="w-3.5 h-3.5 text-primary-500" /> Attached Documents (
+                  {selectedNotice.attachments.length})
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  {selectedNotice.attachments.map((att) => (
+                    <div
+                      key={att.id}
+                      onClick={() =>
+                        dispatch(
+                          addToast({ type: 'info', message: `Simulated download of ${att.name}` })
+                        )
+                      }
+                      className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border bg-muted/50 hover:bg-muted text-xs font-medium text-foreground cursor-pointer transition-colors"
+                    >
+                      <FileText className="w-3.5 h-3.5 text-primary-500" />
+                      <span>{att.name}</span>
+                      <span className="text-[10px] text-muted-foreground">({att.sizeKb} KB)</span>
+                      <Download className="w-3 h-3 text-muted-foreground ml-0.5" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Footer */}
+            <div className="flex justify-end pt-3 border-t border-border">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setSelectedNotice(null);
+                  if (searchParams.has('noticeId')) {
+                    const nextParams = new URLSearchParams(searchParams);
+                    nextParams.delete('noticeId');
+                    setSearchParams(nextParams, { replace: true });
+                  }
+                }}
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        )}
+      </Dialog>
     </div>
   );
 };

@@ -129,7 +129,7 @@ export const noticeService = {
         type: 'NOTICE',
         title: title,
         body: plainExcerpt || 'You have received a new department notice.',
-        link: '/notifications',
+        link: `/notifications?noticeId=${newNotice.id}`,
         read: false,
         createdAt: new Date().toISOString(),
       };
