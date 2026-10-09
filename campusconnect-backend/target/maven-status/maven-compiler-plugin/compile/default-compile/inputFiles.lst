@@ -1,8 +1,13 @@
 C:\Users\nishi\OneDrive\Documents\Desktop\WT-CP\campusconnect-backend\src\main\java\com\campusconnect\CampusConnectApplication.java
 C:\Users\nishi\OneDrive\Documents\Desktop\WT-CP\campusconnect-backend\src\main\java\com\campusconnect\config\DataSeeder.java
+C:\Users\nishi\OneDrive\Documents\Desktop\WT-CP\campusconnect-backend\src\main\java\com\campusconnect\controller\AnalyticsController.java
 C:\Users\nishi\OneDrive\Documents\Desktop\WT-CP\campusconnect-backend\src\main\java\com\campusconnect\controller\AuthController.java
 C:\Users\nishi\OneDrive\Documents\Desktop\WT-CP\campusconnect-backend\src\main\java\com\campusconnect\controller\CallLogController.java
 C:\Users\nishi\OneDrive\Documents\Desktop\WT-CP\campusconnect-backend\src\main\java\com\campusconnect\controller\UserController.java
+C:\Users\nishi\OneDrive\Documents\Desktop\WT-CP\campusconnect-backend\src\main\java\com\campusconnect\dto\analytics\AdminAnalyticsDto.java
+C:\Users\nishi\OneDrive\Documents\Desktop\WT-CP\campusconnect-backend\src\main\java\com\campusconnect\dto\analytics\FacultyAnalyticsDto.java
+C:\Users\nishi\OneDrive\Documents\Desktop\WT-CP\campusconnect-backend\src\main\java\com\campusconnect\dto\analytics\HodAnalyticsDto.java
+C:\Users\nishi\OneDrive\Documents\Desktop\WT-CP\campusconnect-backend\src\main\java\com\campusconnect\dto\analytics\StudentAnalyticsDto.java
 C:\Users\nishi\OneDrive\Documents\Desktop\WT-CP\campusconnect-backend\src\main\java\com\campusconnect\dto\auth\AuthResponse.java
 C:\Users\nishi\OneDrive\Documents\Desktop\WT-CP\campusconnect-backend\src\main\java\com\campusconnect\dto\auth\LoginRequest.java
 C:\Users\nishi\OneDrive\Documents\Desktop\WT-CP\campusconnect-backend\src\main\java\com\campusconnect\dto\call\CallLogRequest.java
@@ -17,5 +22,6 @@ C:\Users\nishi\OneDrive\Documents\Desktop\WT-CP\campusconnect-backend\src\main\j
 C:\Users\nishi\OneDrive\Documents\Desktop\WT-CP\campusconnect-backend\src\main\java\com\campusconnect\security\JwtAuthenticationFilter.java
 C:\Users\nishi\OneDrive\Documents\Desktop\WT-CP\campusconnect-backend\src\main\java\com\campusconnect\security\JwtTokenProvider.java
 C:\Users\nishi\OneDrive\Documents\Desktop\WT-CP\campusconnect-backend\src\main\java\com\campusconnect\security\SecurityConfig.java
+C:\Users\nishi\OneDrive\Documents\Desktop\WT-CP\campusconnect-backend\src\main\java\com\campusconnect\service\AnalyticsService.java
 C:\Users\nishi\OneDrive\Documents\Desktop\WT-CP\campusconnect-backend\src\main\java\com\campusconnect\service\AuthService.java
 C:\Users\nishi\OneDrive\Documents\Desktop\WT-CP\campusconnect-backend\src\main\java\com\campusconnect\service\CallLogService.java

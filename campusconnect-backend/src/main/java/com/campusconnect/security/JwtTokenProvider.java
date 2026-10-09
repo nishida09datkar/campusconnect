@@ -63,6 +63,16 @@ public class JwtTokenProvider {
         return userId != null ? userId.toString() : claims.getSubject();
     }
 
+    public String getRoleFromToken(String token) {
+        Claims claims = Jwts.parser()
+                .verifyWith(getSigningKey())
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+        Object role = claims.get("role");
+        return role != null ? role.toString() : "USER";
+    }
+
     public boolean validateToken(String token) {
         try {
             Jwts.parser().verifyWith(getSigningKey()).build().parseSignedClaims(token);
