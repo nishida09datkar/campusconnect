@@ -152,6 +152,8 @@ export const classroomService = {
       type: 'ANNOUNCEMENT' | 'MATERIAL' | 'DOUBT';
       body: string;
       attachments?: Attachment[];
+      audioUrl?: string;
+      audioDurationSec?: number;
     }
   ): Promise<StreamPost & { author?: User }> {
     await delay(150, 300);
@@ -165,6 +167,8 @@ export const classroomService = {
       createdAt: new Date().toISOString(),
       replies: [],
       resolved: data.type === 'DOUBT' ? false : undefined,
+      audioUrl: data.audioUrl,
+      audioDurationSec: data.audioDurationSec,
     };
 
     db.streamPosts.unshift(newPost);
@@ -176,7 +180,13 @@ export const classroomService = {
   async addStreamReply(
     postId: string,
     authorId: string,
-    body: string
+    body: string,
+    audioData?: {
+      audioUrl?: string;
+      url?: string;
+      audioDurationSec?: number;
+      durationSec?: number;
+    }
   ): Promise<Reply & { author?: User }> {
     await delay(120, 240);
     const post = db.streamPosts.find((p) => p.id === postId);
@@ -189,6 +199,8 @@ export const classroomService = {
       authorId,
       body: body.trim(),
       createdAt: new Date().toISOString(),
+      audioUrl: audioData?.audioUrl || audioData?.url,
+      audioDurationSec: audioData?.audioDurationSec || audioData?.durationSec,
     };
 
     post.replies.push(newReply);

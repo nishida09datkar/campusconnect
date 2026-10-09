@@ -13,7 +13,6 @@ import {
   BarChart3,
   BookOpen,
   MessageSquare,
-  PhoneCall,
   Calendar,
   Bell,
   ChevronLeft,
@@ -57,15 +56,14 @@ export const Sidebar: React.FC = () => {
           { label: 'Department Notices', to: '/hod/notices', icon: Bell },
           { label: 'Academic Calendar', to: '/calendar', icon: Calendar },
           { label: 'Campus Chat', to: '/chat', icon: MessageSquare },
-          { label: 'Call History', to: '/calls/history', icon: PhoneCall },
         ];
       case 'HOD':
         return [
           { label: 'Dashboard', to: '/hod', icon: LayoutDashboard },
           { label: 'Faculty Allocation', to: '/hod/allocation', icon: GitBranch },
+          { label: 'Department Analytics', to: '/hod/analytics', icon: BarChart3 },
           { label: 'Department Notices', to: '/hod/notices', icon: Bell },
           { label: 'Campus Chat', to: '/chat', icon: MessageSquare },
-          { label: 'Call History', to: '/calls/history', icon: PhoneCall },
           { label: 'Academic Calendar', to: '/calendar', icon: Calendar },
         ];
       case 'FACULTY':
@@ -73,8 +71,8 @@ export const Sidebar: React.FC = () => {
           { label: 'Dashboard', to: '/faculty', icon: LayoutDashboard },
           { label: 'My Classes', to: '/faculty/classes', icon: BookOpen },
           { label: 'Assignments', to: '/faculty/assignments', icon: FileText },
+          { label: 'Performance Analytics', to: '/faculty/analytics', icon: BarChart3 },
           { label: 'Messages & Doubts', to: '/chat', icon: MessageSquare },
-          { label: 'Calls & Office Hours', to: '/calls/history', icon: PhoneCall },
           { label: 'Schedule & Calendar', to: '/calendar', icon: Calendar },
         ];
       case 'STUDENT':
@@ -82,8 +80,8 @@ export const Sidebar: React.FC = () => {
           { label: 'Dashboard', to: '/student', icon: LayoutDashboard },
           { label: 'My Classes', to: '/student/classes', icon: BookOpen },
           { label: 'Assignments', to: '/student/assignments', icon: FileText },
+          { label: 'My Analytics', to: '/student/analytics', icon: BarChart3 },
           { label: 'Doubts & Chat', to: '/chat', icon: MessageSquare },
-          { label: 'Call History', to: '/calls/history', icon: PhoneCall },
           { label: 'Class Schedule', to: '/calendar', icon: Calendar },
         ];
       default:

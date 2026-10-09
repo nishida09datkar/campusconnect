@@ -1,4 +1,15 @@
-import { SocketEventMap, ChatSendPayload, ChatTypingPayload, ChatReadPayload } from './events';
+import {
+  SocketEventMap,
+  ChatSendPayload,
+  ChatTypingPayload,
+  ChatReadPayload,
+  CallRequestPayload,
+  CallResponsePayload,
+  LectureJoinPayload,
+  LectureLeavePayload,
+  LectureHandPayload,
+  LectureParticipant,
+} from './events';
 import { chatService } from '@/api/services/chat.service';
 import { presenceService } from '@/api/services/presence.service';
 
@@ -9,6 +20,7 @@ class MockSocket {
   private listeners: Map<string, Set<Listener>> = new Map();
   private presenceInterval: NodeJS.Timeout | null = null;
   private channel: BroadcastChannel | null = null;
+  private lectureRoster: Map<string, LectureParticipant[]> = new Map();
 
   constructor() {
     this.initBroadcastChannel();
@@ -114,6 +126,56 @@ class MockSocket {
       const readPayload = payload as unknown as ChatReadPayload;
       chatService.markAsRead(readPayload.conversationId, readPayload.userId).catch(console.error);
       this.trigger('chat:read', readPayload);
+    } else if (event === 'call:request') {
+      const req = payload as unknown as CallRequestPayload;
+      // In mock mode, only broadcast across tabs to callee, never echo back to caller
+      if (this.channel) {
+        try {
+          this.channel.postMessage({ event: 'call:incoming', args: [req] });
+        } catch {}
+      }
+    } else if (event === 'call:incoming') {
+      this.trigger('call:incoming', payload);
+    } else if (event === 'call:response') {
+      const resp = payload as unknown as CallResponsePayload;
+      this.trigger('call:response', resp);
+    } else if (event === 'call:cancel') {
+      this.trigger('call:cancel', payload);
+    } else if (event === 'call:end') {
+      this.trigger('call:ended', payload);
+    } else if (event === 'webrtc:offer' || event === 'webrtc:answer' || event === 'webrtc:ice') {
+      this.trigger(event as string, payload);
+    } else if (event === 'lecture:join') {
+      const joinReq = payload as unknown as LectureJoinPayload;
+      const list = this.lectureRoster.get(joinReq.roomId) || [];
+      const updated = [
+        ...list.filter((p) => p.userId !== joinReq.userId),
+        {
+          userId: joinReq.userId,
+          name: joinReq.name,
+          role: joinReq.role,
+          isHandRaised: false,
+          isMuted: joinReq.role === 'STUDENT',
+          isCameraOff: joinReq.role === 'STUDENT',
+          joinedAt: new Date().toISOString(),
+        },
+      ];
+      this.lectureRoster.set(joinReq.roomId, updated);
+      this.trigger('lecture:participants', { roomId: joinReq.roomId, participants: updated });
+    } else if (event === 'lecture:leave') {
+      const leaveReq = payload as unknown as LectureLeavePayload;
+      const list = this.lectureRoster.get(leaveReq.roomId) || [];
+      const updated = list.filter((p) => p.userId !== leaveReq.userId);
+      this.lectureRoster.set(leaveReq.roomId, updated);
+      this.trigger('lecture:participants', { roomId: leaveReq.roomId, participants: updated });
+    } else if (event === 'lecture:hand') {
+      const handReq = payload as unknown as LectureHandPayload;
+      const list = this.lectureRoster.get(handReq.roomId) || [];
+      const updated = list.map((p) => (p.userId === handReq.userId ? { ...p, isHandRaised: handReq.raised } : p));
+      this.lectureRoster.set(handReq.roomId, updated);
+      this.trigger('lecture:participants', { roomId: handReq.roomId, participants: updated });
+    } else if (event === 'lecture:control') {
+      this.trigger('lecture:control', payload);
     }
 
     return this;

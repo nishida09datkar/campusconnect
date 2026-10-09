@@ -1,230 +1,197 @@
-# CampusConnect Frontend
+# CampusConnect — Unified Institutional Campus & Classroom Platform
 
-> **Unified Campus Communication and Classroom Platform**  
-> *Frontend Build for React 18 + TypeScript (Strict Mode) & Vite*  
-> Academic Context: Web Development Project, Computer Engineering, AY 2026-27
-
----
-
-## 1. Project Overview
-
-CampusConnect integrates a Google Classroom-style Learning Management System (LMS) with real-time chat and WebRTC voice/video calling. Institutional communication permissions are strictly driven by roles, departments, courses, and active student enrollments.
-
-### Core Roles & Interaction Rules
-1. **ADMIN**: Full campus oversight, manages departments, users, and institute-wide analytics.
-2. **HOD**: Department head, allocates faculty to departmental courses, broadcasts circulars.
-3. **FACULTY**: Teaches assigned courses, manages stream announcements, assignments, grading, quizzes, attendance, doubts, and VoIP calls with enrolled students.
-4. **STUDENT**: Enrolled in courses, submits lab work, takes quizzes, raises doubts, and initiates calls with assigned faculty.
+> **Comprehensive Enterprise LMS, Real-Time Collaboration & Communication Platform**  
+> *Academic Web Technology Capstone Project — Final Submission (Phases 1–6 Complete)*  
+> Built for Computer Engineering & Institutional Academic Administration
 
 ---
 
-## 2. Tech Stack
+## 1. System Architecture Overview
 
-- **Framework**: React 18 + TypeScript (Strict Mode) with Vite
-- **Routing**: React Router DOM v6 with nested routes, lazy loading, and role-based route guards (`ProtectedRoute`)
-- **Global State**: Redux Toolkit (`authSlice`, `uiSlice`, typed hooks `useAppDispatch`, `useAppSelector`)
-- **Styling**: Tailwind CSS + custom shadcn-inspired primitives, CSS variables, dark mode (`class` strategy)
-- **Forms & Validation**: React Hook Form + Zod
-- **HTTP Client**: Axios with Bearer token interceptor and normalized `ApiError`
-- **Real-Time & Signaling**: Socket.IO client (mock adapter during mock mode)
-- **VoIP & Media**: Browser WebRTC (`RTCPeerConnection`, `getUserMedia`, `getDisplayMedia`)
-- **Testing**: Vitest + React Testing Library + jsdom
-- **Icons**: Lucide React
+CampusConnect is engineered as a three-tier microservices-aligned architecture designed for high-availability academic administration, real-time messaging, WebRTC audio/video teleconferencing, and role-based analytical intelligence.
+
+```
+                           ┌────────────────────────────────────────┐
+                           │      Browser Client (Single Page App)   │
+                           │  React 18 + TypeScript + Redux Toolkit  │
+                           │       Tailwind CSS + Recharts           │
+                           │       http://localhost:3000            │
+                           └───────┬────────────────────────┬───────┘
+                                   │                        │
+                        REST APIs  │                        │ Socket.IO / WebRTC
+                    (JWT Bearer)   │                        │ (Signaling & Presence)
+                                   ▼                        ▼
+         ┌──────────────────────────────────┐      ┌──────────────────────────────────┐
+         │     Spring Boot 3 Backend        │      │    Node.js Signaling Server      │
+         │  Java 17 + Spring Security 6     │      │   Express + Socket.IO + CORS     │
+         │  JPA / Hibernate + MySQL 8       │      │  Presence, Mesh WebRTC, Rooms    │
+         │      http://localhost:8080       │      │      http://localhost:5000       │
+         └─────────────────┬────────────────┘      └──────────────────────────────────┘
+                           │
+                           ▼
+         ┌──────────────────────────────────┐
+         │         MySQL 8 Database         │
+         │       `campusconnect_db`         │
+         └──────────────────────────────────┘
+```
+
+### The Three Services:
+1. **`campusconnect-frontend/` (Root workspace)**:
+   - React 18, TypeScript (Strict Mode), Vite, Redux Toolkit.
+   - Code-split routes with `React.lazy()` and `Suspense`.
+   - Audio Engine (.wav voice notes recorder & player).
+   - Recharts analytical intelligence dashboards.
+   - WCAG 2.1 AA accessible modals, inputs, and media controls.
+2. **`campusconnect-backend/`**:
+   - Spring Boot 3.x, Java 17, Spring Security 6 (Stateless JWT).
+   - MySQL 8 with Hibernate/JPA schema mapping.
+   - Additive Phase 6 Analytics Projections (`/api/analytics/{admin,hod,faculty,student}`).
+   - Postman Collection in `campusconnect-backend/postman/CampusConnect.postman_collection.json`.
+3. **`campusconnect-signaling/`**:
+   - Node.js & Express with Socket.IO.
+   - Real-time online presence heartbeats, typing indicators, read receipts.
+   - 1:1 WebRTC audio/video call signaling (Offer/Answer/ICE candidate exchange).
+   - Interactive live lecture rooms with mesh connection coordination and moderation controls.
 
 ---
 
-## 3. Quick Start & Setup
+## 2. Quick Start & Startup Instructions
 
 ### Prerequisites
-- Node.js 18+ (tested on Node 20 / 24)
-- npm 9+
+- **Node.js**: v18.0.0 or later
+- **Java JDK**: 17 or later (`java -version`)
+- **Maven**: 3.8+ (or use backend `mvn.cmd` wrapper)
+- **MySQL**: 8.0+ running on `localhost:3306`
 
-### Installation & Running Locally
+---
 
-```bash
-# 1. Install dependencies
+### Step 1: Start MySQL Database
+Create the database in MySQL:
+```sql
+CREATE DATABASE IF NOT EXISTS campusconnect_db;
+```
+
+---
+
+### Step 2: Start Spring Boot Backend (Port 8080)
+Open a terminal in `campusconnect-backend`:
+```powershell
+cd campusconnect-backend
+mvn spring-boot:run
+# or execute run-backend.bat
+```
+The backend initializes the schema automatically and runs on `http://localhost:8080`.
+
+---
+
+### Step 3: Start Node.js Signaling Server (Port 5000)
+Open a second terminal in `campusconnect-signaling`:
+```powershell
+cd campusconnect-signaling
 npm install
-
-# 2. Run local development server
 npm run dev
-# The application will be available at http://localhost:3000
+```
+The signaling server listens on `http://localhost:5000`.
 
-# 3. Run test suite
-npm run test
+---
 
-# 4. Run linter
-npm run lint
+### Step 4: Start Frontend SPA (Port 3000)
+Open a third terminal in the project root:
+```powershell
+npm install
+npm run dev
+```
+The frontend is available at `http://localhost:3000`.
 
-# 5. Build for production
+---
+
+## 3. Seed Accounts & Role Credentials
+
+The login interface features a **1-Click Demo Accounts Selector** for presentation convenience:
+
+| Role | Name | Email | Password | Scope & Description |
+|---|---|---|---|---|
+| **ADMIN** | Aarav Mehta | `admin@campus.test` | `Admin@123` | Institutional Admin; Platform oversight, departments, user master |
+| **HOD** | Dr. Kavita Rao | `hod.ce@campus.test` | `Hod@123` | Computer Engineering HOD; Faculty workloads, circulars, department stats |
+| **HOD** | Dr. Sameer Joshi | `hod.it@campus.test` | `Hod@123` | Information Technology HOD; IT curriculum and faculty allocations |
+| **FACULTY** | Prof. Neha Kulkarni | `neha@campus.test` | `Fac@123` | CE Faculty; Teaches Web Dev (CE-A), grading, attendance, VoIP |
+| **FACULTY** | Prof. Rohan Desai | `rohan@campus.test` | `Fac@123` | CE Faculty; Teaches Database Systems (CE-A) |
+| **FACULTY** | Prof. Anita Patil | `anita@campus.test` | `Fac@123` | CE Faculty; Teaches Java & Spring (CE-B) |
+| **STUDENT** | Aryan Sharma | `student1@campus.test` | `Stu@123` | CE Year 3 Div A; Roll CE301, assignment submissions, doubts |
+| **STUDENT** | Diya Patel | `student2@campus.test` | `Stu@123` | CE Year 3 Div A; Roll CE302, continuous assessment |
+| **STUDENT** | Rohan Gupta | `student5@campus.test` | `Stu@123` | CE Year 3 Div B; Roll CE305 |
+| **STUDENT** | Riya Sen | `student12@campus.test` | `Stu@123` | IT Year 2 Div A; Roll IT204, cross-department isolation testing |
+
+*Full database contains 12 seeded students (`student1@campus.test` to `student12@campus.test`).*
+
+---
+
+## 4. Phase Implementations (Phases 1–6)
+
+- **Phase 1 — Core Foundation**:
+  - JWT Authentication, protected routes, role routing, theme engine (Obsidian Dark / Light).
+  - Strict role permission interaction matrix (`canInteract`).
+- **Phase 2 — Google Classroom LMS**:
+  - Course and Class management, enrollment via 6-character class code.
+  - Stream announcements with nested replies, material attachments.
+  - Assignment submission lifecycle: Create &rarr; Submit &rarr; Grade & feedback &rarr; Gradebook.
+  - Interactive MCQ Quizzes with instant scoring, session-based attendance register.
+- **Phase 3 — Institutional Department Layer & Notices**:
+  - Department management, HOD faculty-to-course allocations.
+  - DOMPurify sanitized institutional circulars with targeted audience filters (Role, Department, Year).
+  - Unread notification badges, synchronized calendar scheduler.
+- **Phase 4 — Chat, Doubts & Real-Time Presence**:
+  - Direct 1:1 and class group chat channels.
+  - Optimistic message delivery with retry mechanism on failure.
+  - Real-time online/offline presence indicators, typing indicators, read receipts.
+  - Audio voice notes (.wav format recording & waveform playback with speed control).
+- **Phase 5 — WebRTC VoIP Calls & Live Lectures**:
+  - 1:1 audio and video calling with SDP offer/answer and ICE candidate relay.
+  - Ringtone chime audio synthesizer, incoming call modal with auto-timeout.
+  - Interactive lecture rooms: lobby device preview, student hand-raise, faculty mute-all moderation, screen sharing.
+- **Phase 6 — Analytics, Performance Hardening, Accessibility & Polish**:
+  - **Read-Only Backend Analytics**: Additive endpoints for Admin, HOD, Faculty, and Student.
+  - **Analytical Dashboards**: Recharts interactive Bar, Line, and Pie/Donut charts with KPI cards and skeletons.
+  - **Performance Optimization**: Lazy-loaded routes with `React.lazy()`, memoized thread messages (`React.memo`), memoized filter operations (`useMemo`).
+  - **Accessibility (WCAG 2.1 AA)**: Explicit `aria-label` on all icon controls, accessible `role="dialog"` modals with Escape listeners, high-contrast HSL color tokens.
+  - **Full Test Suite**: 87/87 Vitest automated tests passing across all features.
+
+---
+
+## 5. Verification & Testing
+
+### Running Frontend Tests
+```powershell
+npm test
+# Or run with single-pass report:
+npx vitest run
+```
+**Test Results**: `8 passed (8 test files, 87 total tests)` covering Permissions, Auth, LMS, Departments, Chat, Calls, and Analytics.
+
+### Production Build Verification
+```powershell
 npm run build
 ```
+Executes TypeScript type checker (`tsc`) and Vite production bundle compilation.
 
 ---
 
-## 4. Environment Variables (`.env`)
+## 6. Postman API Collection
 
-Configure via `.env` or `.env.example`:
-
-| Variable | Default Value | Description |
-|---|---|---|
-| `VITE_USE_MOCKS` | `true` | Set to `false` to connect to real Spring Boot and Node.js backends |
-| `VITE_API_BASE_URL` | `http://localhost:8080` | Spring Boot REST API base URL |
-| `VITE_SOCKET_URL` | `http://localhost:5000` | Node.js / Socket.IO real-time server URL |
-| `VITE_STUN_URL` | `stun:stun.l.google.com:19302` | WebRTC STUN server URL |
-| `VITE_TURN_URL` | `""` | Optional TURN server URL |
-| `VITE_TURN_USER` | `""` | TURN username |
-| `VITE_TURN_PASS` | `""` | TURN credential |
-| `VITE_MAX_UPLOAD_MB` | `10` | Maximum file attachment size in MB |
+The backend REST API is completely documented and tested in Postman format:
+- **Location**: `campusconnect-backend/postman/CampusConnect.postman_collection.json`
+- **Features**:
+  - Includes pre-configured `base_url` (`http://localhost:8080/api`) and `jwt_token`.
+  - Login endpoint automatically extracts and saves `jwt_token` into collection variables upon successful login.
+  - Complete coverage: Auth, Departments, Users, Courses, Classes, Allocations, Call Logs, and Analytics.
 
 ---
 
-## 5. Demo Accounts (Section 18 Seed Data)
+## 7. Submission Checklist & Artifacts
 
-The login screen provides a **1-click Demo Accounts card** for instant authentication:
-
-| Role | Name | Email | Password | Scope / Context |
-|---|---|---|---|---|
-| **ADMIN** | Aarav Mehta | `admin@campus.test` | `Admin@123` | Institute-wide Admin |
-| **HOD** | Dr. Kavita Rao | `hod.ce@campus.test` | `Hod@123` | Computer Engineering HOD |
-| **HOD** | Dr. Sameer Joshi | `hod.it@campus.test` | `Hod@123` | Information Technology HOD |
-| **FACULTY** | Prof. Neha Kulkarni | `neha@campus.test` | `Fac@123` | CE, Teaches Web Dev (CE-A) |
-| **FACULTY** | Prof. Rohan Desai | `rohan@campus.test` | `Fac@123` | CE, Teaches Database Systems (CE-A) |
-| **FACULTY** | Prof. Anita Patil | `anita@campus.test` | `Fac@123` | CE, Teaches Java & Spring (CE-B) |
-| **FACULTY** | Prof. Vivek Shah | `vivek@campus.test` | `Fac@123` | IT, Teaches Networks (IT-A) |
-| **FACULTY** | Prof. Sara Khan | `sara@campus.test` | `Fac@123` | IT, Teaches Data Structures (IT-A) |
-| **STUDENT** | Aryan Sharma | `student1@campus.test` | `Stu@123` | CE Year 3 Div A (Roll: CE301) |
-| **STUDENT** | Diya Patel | `student2@campus.test` | `Stu@123` | CE Year 3 Div A (Roll: CE302) |
-| **STUDENT** | Rohan Gupta | `student5@campus.test` | `Stu@123` | CE Year 3 Div B (Roll: CE305) |
-| **STUDENT** | Riya Sen | `student12@campus.test` | `Stu@123` | IT Year 2 Div A (Roll: IT204) |
-
-*Note: 12 students are seeded (`student1@campus.test` to `student12@campus.test`).*
-
----
-
-## 6. Project Folder Structure
-
-```
-campusconnect-frontend/
-├── src/
-│   ├── api/
-│   │   ├── axios.ts                  # Axios instance, Bearer token interceptor, 401 handler
-│   │   ├── config.ts                 # Environment variables and USE_MOCKS switch
-│   │   ├── mock/
-│   │   │   ├── db.ts                 # In-memory database seeded with Section 18 data
-│   │   │   └── delay.ts              # Latency simulation (300-800ms) with failure injection
-│   │   └── services/
-│   │       └── auth.service.ts       # Authentication service functions
-│   ├── components/
-│   │   ├── ui/                       # Reusable UI primitives (Button, Card, Input, Avatar...)
-│   │   ├── layout/                   # AppShell, Sidebar, Topbar, MobileDrawer, PageHeader
-│   │   └── common/                   # ErrorBoundary, ToastContainer, RoleBadge
-│   ├── features/
-│   │   ├── auth/                     # authSlice, selectors
-│   │   └── ui/                       # uiSlice (theme, sidebar, toasts)
-│   ├── pages/
-│   │   ├── auth/                     # LoginPage, ForgotPasswordPage
-│   │   ├── admin/                    # AdminDashboard, DepartmentsPage, UsersPage, AnalyticsPage
-│   │   ├── hod/                      # HodDashboard, FacultyAllocationPage, NoticesPage
-│   │   ├── faculty/                  # FacultyDashboard, MyClassesPage, ClassDetailPage
-│   │   ├── student/                  # StudentDashboard, StudentClassesPage, AssignmentPage
-│   │   └── shared/                   # ForbiddenPage (403), NotFoundPage (404), ProfilePage, Chat...
-│   ├── routes/
-│   │   ├── AppRoutes.tsx             # Nested lazy routes with Suspense
-│   │   ├── ProtectedRoute.tsx        # Role-based route guard
-│   │   └── roleRoutes.ts             # Route lookup helpers
-│   ├── store/
-│   │   ├── store.ts                  # Configured Redux Toolkit store
-│   │   └── hooks.ts                  # Typed useAppDispatch & useAppSelector
-│   ├── types/                        # Strict domain types (no any)
-│   │   ├── auth.ts, academic.ts, classroom.ts, communication.ts, common.ts, index.ts
-│   │   └── index.ts
-│   └── utils/
-│       ├── permissions.ts            # canInteract() implementation of Section 3.2 Matrix
-│       ├── constants.ts              # Demo credentials, role definitions, badges
-│       ├── format.ts                 # Date and string formatters
-│       └── storage.ts                # Non-sensitive session hint management
-```
-
----
-
-## 7. Backend Contracts
-
-### 7.1 REST API Contract (Spring Boot / Node)
-
-| Method | Endpoint | Description | Roles Allowed |
-|---|---|---|---|
-| `POST` | `/api/auth/login` | Login with credentials, returns `{ accessToken, user }` | Public |
-| `POST` | `/api/auth/refresh` | Refresh JWT access token | Public |
-| `GET` | `/api/auth/me` | Return currently authenticated user profile | All authenticated |
-| `GET` | `/api/users?role=&departmentId=&q=&page=` | Paginated and filtered users list | ADMIN, HOD |
-| `POST` / `PUT` | `/api/users`, `/api/users/:id` | Create or update user profile | ADMIN |
-| `PATCH` | `/api/users/:id/status` | Activate or deactivate user | ADMIN |
-| `GET` / `POST` | `/api/departments` | List and create academic departments | ADMIN |
-| `PUT` / `DELETE` | `/api/departments/:id` | Update or delete department | ADMIN |
-| `GET` | `/api/courses?departmentId=` | List courses by department | ADMIN, HOD, FACULTY |
-| `GET` / `POST` | `/api/allocations` | List and create faculty-to-course allocations | HOD |
-| `DELETE` | `/api/allocations/:id` | Delete faculty allocation | HOD |
-| `GET` / `POST` | `/api/classes` | Get enrolled/teaching classes or create class | FACULTY, STUDENT |
-| `POST` | `/api/classes/join` | Join class via class code | STUDENT |
-| `GET` / `POST` | `/api/classes/:id/stream` | Get stream posts or post announcement/doubt | Class members |
-| `POST` | `/api/stream/:postId/replies` | Reply to stream post or doubt | Class members |
-| `GET` / `POST` | `/api/classes/:id/assignments` | List and create assignments | FACULTY, STUDENT |
-| `POST` | `/api/assignments/:id/submissions` | Submit lab work or assignment | STUDENT |
-| `GET` | `/api/assignments/:id/submissions` | Get all submissions for an assignment | FACULTY |
-| `PUT` | `/api/submissions/:id/grade` | Submit grade and instructor feedback | FACULTY |
-| `GET` / `POST` | `/api/classes/:id/quizzes` | List and create MCQ quizzes | FACULTY, STUDENT |
-| `POST` | `/api/quizzes/:id/attempts` | Submit quiz attempt and answers | STUDENT |
-| `GET` / `POST` | `/api/classes/:id/attendance` | Read and record class attendance | FACULTY (Read: STUDENT) |
-| `GET` / `POST` | `/api/announcements` | List and broadcast circulars | ADMIN, HOD |
-| `GET` | `/api/notifications` | List user notifications | All |
-| `PATCH` | `/api/notifications/:id/read` | Mark notification as read | All |
-| `PATCH` | `/api/notifications/read-all` | Mark all notifications read | All |
-| `GET` | `/api/conversations` | List user chat conversations | All |
-| `POST` | `/api/conversations` | Create direct or group conversation | All (Rules apply) |
-| `GET` | `/api/conversations/:id/messages` | Paginated messages in thread | All |
-| `GET` | `/api/calls/logs` | Call logs and history | All |
-| `GET` | `/api/analytics/:role` | Role-specific analytics and KPIs | Respective role |
-| `POST` | `/api/files/upload` | Multipart file upload returning `Attachment` | All |
-
----
-
-### 7.2 Socket.IO Event Contract (Node.js Real-time Service)
-
-| Event | Direction | Payload | Purpose |
-|---|---|---|---|
-| `presence:update` | Server &rarr; Client | `{ userId, online, lastSeen? }` | Real-time presence updates |
-| `chat:send` | Client &rarr; Server | `{ conversationId, body, attachments, tempId }` | Send chat message |
-| `chat:message` | Server &rarr; Client | `Message` | Deliver incoming message |
-| `chat:ack` | Server &rarr; Client | `{ tempId, message }` | Reconcile optimistic message |
-| `chat:typing` | Both | `{ conversationId, userId, isTyping }` | Typing indicator |
-| `chat:read` | Both | `{ conversationId, userId, upToMessageId }` | Read receipts |
-| `notification:new` | Server &rarr; Client | `AppNotification` | Push real-time notification |
-| `call:request` | Client &rarr; Server | `{ callId, toUserId, kind, context? }` | Request 1:1 call |
-| `call:incoming` | Server &rarr; Client | `{ callId, fromUser, kind, context? }` | Ring callee |
-| `call:accept` | Client &rarr; Server | `{ callId }` | Callee accepts |
-| `call:decline` | Client &rarr; Server | `{ callId }` | Callee declines |
-| `call:cancel` | Client &rarr; Server | `{ callId }` | Caller cancels before pickup |
-| `call:end` | Both | `{ callId }` | End active call |
-| `webrtc:offer` | Both | `{ callId, sdp }` | SDP offer exchange |
-| `webrtc:answer` | Both | `{ callId, sdp }` | SDP answer exchange |
-| `webrtc:ice` | Both | `{ callId, candidate }` | ICE candidate exchange |
-| `lecture:join` | Client &rarr; Server | `{ roomId }` | Join live lecture |
-| `lecture:leave` | Client &rarr; Server | `{ roomId }` | Leave live lecture |
-| `lecture:participants` | Server &rarr; Client | `{ roomId, participants[] }` | Roster update |
-| `lecture:hand` | Both | `{ roomId, userId, raised }` | Raise / lower hand |
-| `lecture:control` | Faculty &rarr; Server | `{ roomId, action, targetUserId? }` | Mute, remove, end lecture |
-
----
-
-## 8. Assumptions
-
-1. **Security & Session Persistence**: In-memory token storage is enforced per Section 16 to prevent token theft via XSS. Only non-sensitive session hints (`userId`, `email`, `role`) are saved in `localStorage` to allow session hydration via `/api/auth/me` on browser reload.
-2. **Switching to Real Services**: When `VITE_USE_MOCKS=false`, the client seamlessly connects to the Spring Boot REST API at `http://localhost:8080` and the Node.js Socket.IO server at `http://localhost:5000` with zero frontend code modifications.
-3. **WebRTC HTTPS Requirement**: Outside of localhost, browsers require HTTPS to access camera and microphone devices.
-
----
-
-## 9. Next.js SSR Migration Notes (Future Roadmap)
-
-- The application structure isolates state slices, service APIs, and hooks, facilitating seamless migration to Next.js App Router if server-side rendering is required in future releases.
-- Routes can map 1-to-1 to Next.js route groups `app/(admin)/`, `app/(hod)/`, `app/(faculty)/`, `app/(student)/`.
+- [x] Three services running and configured end-to-end.
+- [x] Branch `phase-6` committed with clean git history.
+- [x] Backend additive changes strictly isolated to `/api/analytics` without schema regressions.
+- [x] In-memory fallback and live backend dual-mode support (`VITE_USE_MOCKS`).
+- [x] Postman collection validated.
+- [x] Presentation walkthrough guide documented in `DEMO.md`.

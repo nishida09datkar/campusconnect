@@ -38,6 +38,7 @@ const AnalyticsPage = lazy(() => import('@/pages/admin/AnalyticsPage'));
 const HodDashboard = lazy(() => import('@/pages/hod/HodDashboard'));
 const FacultyAllocationPage = lazy(() => import('@/pages/hod/FacultyAllocationPage'));
 const NoticesPage = lazy(() => import('@/pages/hod/NoticesPage'));
+const HodAnalyticsPage = lazy(() => import('@/pages/hod/HodAnalyticsPage'));
 
 // Faculty pages
 const FacultyDashboard = lazy(() => import('@/pages/faculty/FacultyDashboard'));
@@ -45,6 +46,7 @@ const MyClassesPage = lazy(() => import('@/pages/faculty/MyClassesPage'));
 const ClassDetailPage = lazy(() => import('@/pages/faculty/ClassDetailPage'));
 const FacultyAssignmentsPage = lazy(() => import('@/pages/faculty/FacultyAssignmentsPage'));
 const SubmissionsPage = lazy(() => import('@/pages/faculty/SubmissionsPage'));
+const FacultyAnalyticsPage = lazy(() => import('@/pages/faculty/FacultyAnalyticsPage'));
 
 // Student pages
 const StudentDashboard = lazy(() => import('@/pages/student/StudentDashboard'));
@@ -52,6 +54,7 @@ const StudentClassesPage = lazy(() => import('@/pages/student/StudentClassesPage
 const StudentClassDetailPage = lazy(() => import('@/pages/student/StudentClassDetailPage'));
 const StudentAssignmentsPage = lazy(() => import('@/pages/student/StudentAssignmentsPage'));
 const AssignmentPage = lazy(() => import('@/pages/student/AssignmentPage'));
+const StudentAnalyticsPage = lazy(() => import('@/pages/student/StudentAnalyticsPage'));
 
 // Shared pages
 const ChatPage = lazy(() => import('@/pages/shared/ChatPage'));
@@ -102,6 +105,7 @@ export const AppRoutes: React.FC = () => {
             <Route element={<ProtectedRoute allowedRoles={['HOD']} />}>
               <Route path="/hod" element={<HodDashboard />} />
               <Route path="/hod/allocation" element={<FacultyAllocationPage />} />
+              <Route path="/hod/analytics" element={<HodAnalyticsPage />} />
             </Route>
 
             {/* FACULTY Protected Routes */}
@@ -112,6 +116,7 @@ export const AppRoutes: React.FC = () => {
               <Route path="/faculty/classes/:classId" element={<ClassDetailPage />} />
               <Route path="/faculty/assignments" element={<FacultyAssignmentsPage />} />
               <Route path="/faculty/assignments/:id/submissions" element={<SubmissionsPage />} />
+              <Route path="/faculty/analytics" element={<FacultyAnalyticsPage />} />
             </Route>
 
             {/* STUDENT Protected Routes */}
@@ -122,6 +127,7 @@ export const AppRoutes: React.FC = () => {
               <Route path="/student/classes/:classId" element={<StudentClassDetailPage />} />
               <Route path="/student/assignments" element={<StudentAssignmentsPage />} />
               <Route path="/student/assignments/:id" element={<AssignmentPage />} />
+              <Route path="/student/analytics" element={<StudentAnalyticsPage />} />
             </Route>
 
             {/* FACULTY & STUDENT Shared Live Lecture Room */}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { selectCurrentUser } from '@/features/auth/authSelectors';
@@ -202,13 +202,17 @@ export const NotificationsPage: React.FC = () => {
   };
 
   // Filtered notifications
-  const filteredNotifications = notifications.filter((n) => {
-    if (selectedType !== 'ALL' && n.type !== selectedType) return false;
-    if (onlyUnread && n.read) return false;
-    return true;
-  });
+  const filteredNotifications = useMemo(() => {
+    return notifications.filter((n) => {
+      if (selectedType !== 'ALL' && n.type !== selectedType) return false;
+      if (onlyUnread && n.read) return false;
+      return true;
+    });
+  }, [notifications, selectedType, onlyUnread]);
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
+  const unreadCount = useMemo(() => {
+    return notifications.filter((n) => !n.read).length;
+  }, [notifications]);
 
   return (
     <div className="space-y-6">

@@ -20,13 +20,32 @@ export function getSocketClient(): AppSocket {
   }
 
   if (!realSocketInstance) {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') || '' : '';
     realSocketInstance = io(SOCKET_URL, {
-      autoConnect: false,
-      transports: ['websocket'],
+      autoConnect: true,
+      transports: ['websocket', 'polling'],
+      auth: {
+        token: token ? (token.startsWith('Bearer ') ? token : `Bearer ${token}`) : '',
+      },
+    });
+
+    realSocketInstance.on('connect_error', (err) => {
+      console.warn('[SocketClient] Connection error:', err.message);
     });
   }
 
   return realSocketInstance as unknown as AppSocket;
+}
+
+export function updateSocketAuthToken(token: string): void {
+  if (realSocketInstance) {
+    realSocketInstance.auth = {
+      token: token.startsWith('Bearer ') ? token : `Bearer ${token}`,
+    };
+    if (realSocketInstance.connected) {
+      realSocketInstance.disconnect().connect();
+    }
+  }
 }
 
 export const socketClient = getSocketClient();

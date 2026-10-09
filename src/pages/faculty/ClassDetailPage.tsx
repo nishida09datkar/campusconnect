@@ -50,6 +50,8 @@ import {
   AlertCircle,
   Search,
 } from 'lucide-react';
+import { AudioPlayer } from '@/components/common/AudioPlayer';
+import { AudioRecorderButton } from '@/components/common/AudioRecorderButton';
 
 type TabKey = 'stream' | 'assignments' | 'materials' | 'people' | 'attendance' | 'grades';
 
@@ -76,6 +78,7 @@ export const ClassDetailPage: React.FC = () => {
   const [postAttachmentName, setPostAttachmentName] = useState('');
   const [isPosting, setIsPosting] = useState(false);
   const [replyInputs, setReplyInputs] = useState<Record<string, string>>({});
+  const [replyAudios, setReplyAudios] = useState<Record<string, { url: string; durationSec: number }>>({});
 
   // Tab 2: Assignments state
   const [assignments, setAssignments] = useState<Assignment[]>([]);
@@ -235,15 +238,22 @@ export const ClassDetailPage: React.FC = () => {
   };
 
   const handleAddReply = async (postId: string) => {
-    const text = replyInputs[postId]?.trim();
-    if (!user || !text) return;
+    const text = replyInputs[postId]?.trim() || '';
+    const audioData = replyAudios[postId];
+    if (!user || (!text && !audioData)) return;
 
     try {
-      const reply = await classroomService.addStreamReply(postId, user.id, text);
+      const finalBody = text || '🎤 Audio Explanation';
+      const reply = await classroomService.addStreamReply(postId, user.id, finalBody, audioData);
       setPosts((prev) =>
         prev.map((p) => (p.id === postId ? { ...p, replies: [...p.replies, reply] } : p))
       );
       setReplyInputs((prev) => ({ ...prev, [postId]: '' }));
+      setReplyAudios((prev) => {
+        const next = { ...prev };
+        delete next[postId];
+        return next;
+      });
     } catch {
       dispatch(addToast({ type: 'error', message: 'Failed to add reply' }));
     }
@@ -684,20 +694,33 @@ export const ClassDetailPage: React.FC = () => {
                   </div>
 
                   {post.type === 'DOUBT' && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleToggleDoubt(post.id)}
-                      className="text-xs"
-                    >
-                      {post.resolved ? 'Reopen Doubt' : 'Mark Resolved'}
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleToggleDoubt(post.id)}
+                        className="text-xs"
+                      >
+                        {post.resolved ? 'Reopen Doubt' : 'Mark Resolved'}
+                      </Button>
+                    </div>
                   )}
                 </div>
 
                 <div className="text-sm text-foreground/90 whitespace-pre-wrap leading-relaxed pl-13">
                   {post.body}
                 </div>
+
+                {/* Audio Doubt Player */}
+                {post.audioUrl && (
+                  <div className="pl-13 pt-1">
+                    <AudioPlayer
+                      src={post.audioUrl}
+                      title="Student Voice Doubt"
+                      duration={post.audioDurationSec}
+                    />
+                  </div>
+                )}
 
                 {/* Attachments */}
                 {post.attachments && post.attachments.length > 0 && (
@@ -735,34 +758,82 @@ export const ClassDetailPage: React.FC = () => {
                           </span>
                         </div>
                         <p className="text-foreground/80">{reply.body}</p>
+
+                        {/* Audio Reply Player */}
+                        {reply.audioUrl && (
+                          <div className="pt-1.5">
+                            <AudioPlayer
+                              src={reply.audioUrl}
+                              title="Voice Explanation"
+                              duration={reply.audioDurationSec}
+                              compact
+                            />
+                          </div>
+                        )}
                       </div>
                     );
                   })}
 
                   {/* Add Reply Bar */}
-                  <div className="flex gap-2 pt-1">
-                    <Input
-                      placeholder="Write an instructor reply..."
-                      value={replyInputs[post.id] || ''}
-                      onChange={(e) =>
-                        setReplyInputs((prev) => ({ ...prev, [post.id]: e.target.value }))
-                      }
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                          e.preventDefault();
-                          handleAddReply(post.id);
+                  <div className="space-y-2 pt-1">
+                    {replyAudios[post.id] && (
+                      <div className="flex items-center gap-2 bg-muted/40 p-2 rounded-xl border border-border">
+                        <AudioPlayer
+                          src={replyAudios[post.id].url}
+                          title="Voice Explanation Preview"
+                          duration={replyAudios[post.id].durationSec}
+                          compact
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() =>
+                            setReplyAudios((prev) => {
+                              const n = { ...prev };
+                              delete n[post.id];
+                              return n;
+                            })
+                          }
+                          className="h-7 text-xs text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    )}
+
+                    <div className="flex items-center gap-2">
+                      <Input
+                        placeholder="Write an instructor reply or record audio..."
+                        value={replyInputs[post.id] || ''}
+                        onChange={(e) =>
+                          setReplyInputs((prev) => ({ ...prev, [post.id]: e.target.value }))
                         }
-                      }}
-                      className="h-9 text-xs"
-                    />
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleAddReply(post.id)}
-                      className="h-9 text-xs px-3"
-                    >
-                      Reply
-                    </Button>
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            handleAddReply(post.id);
+                          }
+                        }}
+                        className="h-9 text-xs"
+                      />
+
+                      <AudioRecorderButton
+                        compact
+                        onAudioRecorded={(res) =>
+                          setReplyAudios((prev) => ({ ...prev, [post.id]: res }))
+                        }
+                      />
+
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleAddReply(post.id)}
+                        className="h-9 text-xs px-3"
+                      >
+                        Reply
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </Card>
@@ -1154,6 +1225,7 @@ export const ClassDetailPage: React.FC = () => {
                         <th className="p-3.5">Roll No</th>
                         <th className="p-3.5">Academic Email</th>
                         <th className="p-3.5">Year / Division</th>
+                        <th className="p-3.5 text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
@@ -1169,6 +1241,9 @@ export const ClassDetailPage: React.FC = () => {
                           <td className="p-3.5 text-muted-foreground">{stu.email}</td>
                           <td className="p-3.5 text-muted-foreground">
                             Year {stu.year || 3} (Div {stu.division || cls.section})
+                          </td>
+                          <td className="p-3.5 text-right text-xs text-muted-foreground">
+                            Enrolled
                           </td>
                         </tr>
                       ))}

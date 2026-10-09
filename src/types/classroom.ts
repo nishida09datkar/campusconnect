@@ -5,6 +5,8 @@ export interface Reply {
   authorId: string;
   body: string;
   createdAt: string;
+  audioUrl?: string;
+  audioDurationSec?: number;
 }
 
 export interface StreamPost {
@@ -17,6 +19,8 @@ export interface StreamPost {
   createdAt: string;
   replies: Reply[];
   resolved?: boolean;
+  audioUrl?: string;
+  audioDurationSec?: number;
 }
 
 export interface Assignment {

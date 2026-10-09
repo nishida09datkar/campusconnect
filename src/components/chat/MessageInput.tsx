@@ -2,8 +2,9 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { MAX_UPLOAD_MB } from '@/api/config';
 import { Attachment } from '@/types';
 import { Button } from '@/components/ui/Button';
-import { Send, Paperclip, X, FileText } from 'lucide-react';
+import { Send, Paperclip, X, FileText, Mic, Trash2 } from 'lucide-react';
 import { clsx } from 'clsx';
+import { useAudioRecorder } from '@/hooks/useAudioRecorder';
 
 interface MessageInputProps {
   onSendMessage: (body: string, attachments: Attachment[]) => void;
@@ -21,6 +22,14 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   const [text, setText] = useState('');
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const {
+    isRecording,
+    recordingDuration,
+    startRecording,
+    stopRecording,
+    cancelRecording,
+  } = useAudioRecorder();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -102,11 +111,37 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     }
   }, [text, attachments, onSendMessage, onTyping]);
 
+  const handleSendVoiceNote = async () => {
+    const result = await stopRecording();
+    if (!result) return;
+
+    const audioAttachment: Attachment = {
+      id: `att-audio-${Date.now()}`,
+      name: `Voice Note (${result.durationSec}s).wav`,
+      sizeKb: Math.round(result.blob.size / 1024) || 12,
+      mime: 'audio/wav',
+      url: result.url,
+    };
+
+    const finalBody = text.trim() ? text.trim() : '🎤 Voice Note';
+    onSendMessage(finalBody, [...attachments, audioAttachment]);
+    setText('');
+    setAttachments([]);
+    setErrorMessage(null);
+    onTyping(false);
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
     }
+  };
+
+  const formatTimer = (sec: number) => {
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
   const isSendDisabled = disabled || (!text.trim() && attachments.length === 0);
@@ -150,59 +185,124 @@ export const MessageInput: React.FC<MessageInputProps> = ({
         </div>
       )}
 
-      {/* Input controls */}
-      <div className="flex items-end gap-2">
-        <input
-          ref={fileInputRef}
-          type="file"
-          className="hidden"
-          onChange={handleFileChange}
-          data-testid="file-upload-input"
-        />
+      {/* Active Voice Recording Bar */}
+      {isRecording ? (
+        <div className="flex items-center justify-between gap-3 bg-red-500/10 border border-red-500/20 rounded-2xl px-4 py-2 animate-in fade-in duration-200">
+          <div className="flex items-center gap-3">
+            <span className="relative flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-red-600"></span>
+            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-red-600 dark:text-red-400">
+                Recording audio...
+              </span>
+              <span className="font-mono text-xs text-foreground bg-card px-2 py-0.5 rounded border border-border">
+                {formatTimer(recordingDuration)}
+              </span>
+            </div>
+          </div>
 
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="p-2 text-muted-foreground hover:text-foreground shrink-0 rounded-full h-10 w-10"
-          onClick={() => fileInputRef.current?.click()}
-          title={`Attach file (max ${MAX_UPLOAD_MB}MB)`}
-          disabled={disabled}
-          data-testid="attach-button"
-        >
-          <Paperclip className="w-5 h-5" />
-        </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={cancelRecording}
+              className="h-8 w-8 p-0 rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+              title="Discard recording"
+              aria-label="Discard recording"
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
 
-        <div className="flex-1 relative">
-          <textarea
-            ref={textareaRef}
-            rows={1}
-            value={text}
-            onChange={handleTextChange}
-            onKeyDown={handleKeyDown}
-            disabled={disabled}
-            placeholder={placeholder}
-            className={clsx(
-              'w-full resize-none rounded-2xl border border-input bg-background px-4 py-2.5 text-sm ring-offset-background',
-              'placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500',
-              'min-h-[42px] max-h-32'
-            )}
-            data-testid="message-textarea"
-          />
+            <Button
+              type="button"
+              variant="primary"
+              size="sm"
+              onClick={handleSendVoiceNote}
+              className="h-8 px-3 rounded-full text-xs gap-1.5 bg-red-600 hover:bg-red-700 text-white"
+              title="Send audio note"
+              aria-label="Send audio note"
+            >
+              <Send className="w-3.5 h-3.5" />
+              <span>Send Audio</span>
+            </Button>
+          </div>
         </div>
+      ) : (
+        /* Standard Input Controls */
+        <div className="flex items-end gap-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            className="hidden"
+            onChange={handleFileChange}
+            data-testid="file-upload-input"
+          />
 
-        <Button
-          type="button"
-          size="sm"
-          className="h-10 w-10 p-0 rounded-full shrink-0 flex items-center justify-center shadow-sm"
-          disabled={isSendDisabled}
-          onClick={handleSend}
-          title="Send message (Enter)"
-          data-testid="send-button"
-        >
-          <Send className="w-4 h-4 ml-0.5" />
-        </Button>
-      </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="p-2 text-muted-foreground hover:text-foreground shrink-0 rounded-full h-10 w-10"
+            onClick={() => fileInputRef.current?.click()}
+            title={`Attach file (max ${MAX_UPLOAD_MB}MB)`}
+            aria-label="Attach file"
+            disabled={disabled}
+            data-testid="attach-button"
+          >
+            <Paperclip className="w-5 h-5" />
+          </Button>
+
+          {/* Record Audio Button */}
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="p-2 text-muted-foreground hover:text-primary shrink-0 rounded-full h-10 w-10 hover:bg-primary/10 transition-colors"
+            onClick={() => startRecording()}
+            title="Record audio voice note"
+            aria-label="Record audio voice note"
+            disabled={disabled}
+            data-testid="record-audio-button"
+          >
+            <Mic className="w-5 h-5" />
+          </Button>
+
+          <div className="flex-1 relative">
+            <textarea
+              ref={textareaRef}
+              rows={1}
+              value={text}
+              onChange={handleTextChange}
+              onKeyDown={handleKeyDown}
+              disabled={disabled}
+              placeholder={placeholder}
+              aria-label="Type a message"
+              className={clsx(
+                'w-full resize-none rounded-2xl border border-input bg-background px-4 py-2.5 text-sm ring-offset-background',
+                'placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500',
+                'min-h-[42px] max-h-32'
+              )}
+              data-testid="message-textarea"
+            />
+          </div>
+
+          <Button
+            type="button"
+            size="sm"
+            className="h-10 w-10 p-0 rounded-full shrink-0 flex items-center justify-center shadow-sm"
+            disabled={isSendDisabled}
+            onClick={handleSend}
+            title="Send message (Enter)"
+            aria-label="Send message"
+            data-testid="send-button"
+          >
+            <Send className="w-4 h-4 ml-0.5" />
+          </Button>
+        </div>
+      )}
     </div>
   );
 };

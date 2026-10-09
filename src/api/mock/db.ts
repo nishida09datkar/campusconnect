@@ -19,6 +19,11 @@ import {
   AppNotification,
   CalendarEvent,
 } from '@/types';
+import {
+  SAMPLE_AUDIO_DOUBT_URL,
+  SAMPLE_AUDIO_REPLY_URL,
+  SAMPLE_AUDIO_CHAT_URL,
+} from '@/utils/audioSample';
 
 // Initial Departments
 export const initialDepartments: Department[] = [
@@ -388,10 +393,19 @@ export const initialStreamPosts: StreamPost[] = [
     type: 'DOUBT',
     body: 'Prof. Neha, could you clarify whether we should use React Router v6 createBrowserRouter or standard BrowserRouter for nested routes in the lab assignment?',
     attachments: [],
+    audioUrl: SAMPLE_AUDIO_DOUBT_URL,
+    audioDurationSec: 3,
     createdAt: '2026-09-22T14:15:00Z',
     resolved: false,
     replies: [
-      { id: 'rep-2', authorId: 'user-fac-neha', body: 'Either is acceptable, but createBrowserRouter with data routers is recommended for Unit V topics.', createdAt: '2026-09-22T15:00:00Z' },
+      {
+        id: 'rep-2',
+        authorId: 'user-fac-neha',
+        body: 'Either is acceptable, but createBrowserRouter with data routers is recommended for Unit V topics.',
+        audioUrl: SAMPLE_AUDIO_REPLY_URL,
+        audioDurationSec: 4,
+        createdAt: '2026-09-22T15:00:00Z',
+      },
     ],
   },
   {
@@ -634,9 +648,28 @@ export const initialMessages: Message[] = [
     id: 'msg-2',
     conversationId: 'conv-1',
     senderId: 'user-fac-neha',
-    body: 'Good afternoon Aryan! Feel free to ask here, or request a quick voice call if you need screen sharing.',
+    body: 'Good afternoon Aryan! Feel free to ask here.',
     attachments: [],
     sentAt: '2026-09-26T14:22:00Z',
+    status: 'READ',
+  },
+  {
+    id: 'msg-2b',
+    conversationId: 'conv-1',
+    senderId: 'user-stu-1',
+    body: '🎤 Voice Note: Lab 2 state architecture question',
+    attachments: [
+      {
+        id: 'att-voice-1',
+        name: 'Voice Note (3s).wav',
+        sizeKb: 14,
+        mime: 'audio/wav',
+        url: SAMPLE_AUDIO_CHAT_URL,
+      },
+    ],
+    audioUrl: SAMPLE_AUDIO_CHAT_URL,
+    audioDurationSec: 3,
+    sentAt: '2026-09-26T14:25:00Z',
     status: 'READ',
   },
   {
@@ -664,7 +697,7 @@ export const initialConversations: Conversation[] = [
     id: 'conv-1',
     type: 'DIRECT',
     memberIds: ['user-stu-1', 'user-fac-neha'],
-    lastMessage: initialMessages[1],
+    lastMessage: initialMessages[2],
     unreadCount: 0,
   },
   {
@@ -885,6 +918,47 @@ class MockDatabase {
   callLogs = [...initialCallLogs];
   notifications = loadFromStorage('notifications', [...initialNotifications]);
   events = [...initialCalendarEvents];
+
+  constructor() {
+    this.hydrateAudioData();
+  }
+
+  private hydrateAudioData(): void {
+    let streamChanged = false;
+    const post2 = this.streamPosts.find((p) => p.id === 'post-2');
+    if (post2 && !post2.audioUrl) {
+      post2.audioUrl = SAMPLE_AUDIO_DOUBT_URL;
+      post2.audioDurationSec = 3;
+      streamChanged = true;
+    }
+    const rep2 = post2?.replies?.find((r) => r.id === 'rep-2');
+    if (rep2 && !rep2.audioUrl) {
+      rep2.audioUrl = SAMPLE_AUDIO_REPLY_URL;
+      rep2.audioDurationSec = 4;
+      streamChanged = true;
+    }
+    if (streamChanged) {
+      this.persistStream();
+    }
+
+    let msgChanged = false;
+    const hasMsg2b = this.messages.some((m) => m.id === 'msg-2b');
+    if (!hasMsg2b) {
+      const msg2b = initialMessages.find((m) => m.id === 'msg-2b');
+      if (msg2b) {
+        const idx2 = this.messages.findIndex((m) => m.id === 'msg-2');
+        if (idx2 !== -1) {
+          this.messages.splice(idx2 + 1, 0, { ...msg2b });
+        } else {
+          this.messages.push({ ...msg2b });
+        }
+        msgChanged = true;
+      }
+    }
+    if (msgChanged) {
+      this.persistMessages();
+    }
+  }
 
   persistMessages(): void {
     saveToStorage('messages', this.messages);

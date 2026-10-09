@@ -15,7 +15,6 @@ import {
   BarChart3,
   BookOpen,
   MessageSquare,
-  PhoneCall,
   Calendar,
   Bell,
   LogOut,
@@ -51,15 +50,14 @@ export const MobileDrawer: React.FC = () => {
           { label: 'Notices', to: '/hod/notices', icon: Bell },
           { label: 'Calendar', to: '/calendar', icon: Calendar },
           { label: 'Chat', to: '/chat', icon: MessageSquare },
-          { label: 'Calls', to: '/calls/history', icon: PhoneCall },
         ];
       case 'HOD':
         return [
           { label: 'Dashboard', to: '/hod', icon: LayoutDashboard },
           { label: 'Allocation', to: '/hod/allocation', icon: GitBranch },
+          { label: 'Analytics', to: '/hod/analytics', icon: BarChart3 },
           { label: 'Notices', to: '/hod/notices', icon: Bell },
           { label: 'Chat', to: '/chat', icon: MessageSquare },
-          { label: 'Calls', to: '/calls/history', icon: PhoneCall },
           { label: 'Calendar', to: '/calendar', icon: Calendar },
         ];
       case 'FACULTY':
@@ -67,8 +65,8 @@ export const MobileDrawer: React.FC = () => {
           { label: 'Dashboard', to: '/faculty', icon: LayoutDashboard },
           { label: 'My Classes', to: '/faculty/classes', icon: BookOpen },
           { label: 'Assignments', to: '/faculty/assignments', icon: FileText },
+          { label: 'Analytics', to: '/faculty/analytics', icon: BarChart3 },
           { label: 'Chat & Doubts', to: '/chat', icon: MessageSquare },
-          { label: 'Call History', to: '/calls/history', icon: PhoneCall },
           { label: 'Calendar', to: '/calendar', icon: Calendar },
         ];
       case 'STUDENT':
@@ -76,8 +74,8 @@ export const MobileDrawer: React.FC = () => {
           { label: 'Dashboard', to: '/student', icon: LayoutDashboard },
           { label: 'My Classes', to: '/student/classes', icon: BookOpen },
           { label: 'Assignments', to: '/student/assignments', icon: FileText },
+          { label: 'Analytics', to: '/student/analytics', icon: BarChart3 },
           { label: 'Chat', to: '/chat', icon: MessageSquare },
-          { label: 'Call History', to: '/calls/history', icon: PhoneCall },
           { label: 'Calendar', to: '/calendar', icon: Calendar },
         ];
       default:

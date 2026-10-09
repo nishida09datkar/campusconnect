@@ -9,6 +9,8 @@ export interface Message {
   sentAt: string;
   status: 'SENT' | 'DELIVERED' | 'READ';
   tempId?: string;
+  audioUrl?: string;
+  audioDurationSec?: number;
 }
 
 export interface Conversation {
@@ -29,7 +31,9 @@ export interface PresenceState {
 export interface CallLog {
   id: string;
   callerId: string;
+  callerName?: string;
   calleeId?: string;
+  calleeName?: string;
   roomId?: string;
   kind: 'VOICE' | 'VIDEO' | 'LECTURE';
   startedAt: string;

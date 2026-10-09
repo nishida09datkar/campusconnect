@@ -18,6 +18,7 @@ import {
   Info,
   Loader2,
 } from 'lucide-react';
+import { AudioPlayer } from '@/components/common/AudioPlayer';
 import { clsx } from 'clsx';
 
 interface MessageThreadProps {
@@ -51,7 +52,6 @@ export const MessageThread: React.FC<MessageThreadProps> = ({
   onBack,
   onViewGroupInfo,
 }) => {
-  const dispatch = useAppDispatch();
   const scrollViewportRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const previousScrollHeightRef = useRef<number>(0);
@@ -159,16 +159,18 @@ export const MessageThread: React.FC<MessageThreadProps> = ({
           </div>
         </div>
 
-        {!isDirect && onViewGroupInfo && (
-          <button
-            onClick={onViewGroupInfo}
-            className="p-2 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted"
-            title="Group details"
-            data-testid="group-info-button"
-          >
-            <Info className="w-5 h-5" />
-          </button>
-        )}
+        <div className="flex items-center gap-1">
+          {!isDirect && onViewGroupInfo && (
+            <button
+              onClick={onViewGroupInfo}
+              className="p-2 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted"
+              title="Group details"
+              data-testid="group-info-button"
+            >
+              <Info className="w-5 h-5" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Messages Scroll Viewport */}
@@ -218,85 +220,15 @@ export const MessageThread: React.FC<MessageThreadProps> = ({
                   </div>
                 )}
 
-                <div
-                  className={clsx(
-                    'flex flex-col max-w-[80%] md:max-w-[70%]',
-                    isSelf ? 'ml-auto items-end' : 'mr-auto items-start'
-                  )}
-                  data-testid="message-bubble"
-                >
-                  {/* Sender Name in Group chats */}
-                  {!isDirect && !isSelf && (
-                    <span className="text-[11px] font-medium text-muted-foreground mb-1 ml-1">
-                      {sender?.name || 'Member'}
-                    </span>
-                  )}
-
-                  {/* Bubble Content */}
-                  <div
-                    className={clsx(
-                      'px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed shadow-xs',
-                      isSelf
-                        ? 'bg-primary-600 text-white rounded-br-xs'
-                        : 'bg-card border border-border text-foreground rounded-bl-xs'
-                    )}
-                  >
-                    {msg.body && (
-                      <p className="whitespace-pre-wrap break-words">{msg.body}</p>
-                    )}
-
-                    {/* Attachments within message */}
-                    {msg.attachments && msg.attachments.length > 0 && (
-                      <div className="mt-2 space-y-1.5">
-                        {msg.attachments.map((att) => (
-                          <div
-                            key={att.id}
-                            onClick={() =>
-                              dispatch(
-                                addToast({
-                                  type: 'info',
-                                  message: `Simulating download of ${att.name}`,
-                                })
-                              )
-                            }
-                            className={clsx(
-                              'flex items-center justify-between gap-3 p-2 rounded-xl text-xs cursor-pointer transition-colors',
-                              isSelf
-                                ? 'bg-primary-700/60 hover:bg-primary-700 text-white'
-                                : 'bg-muted/70 hover:bg-muted text-foreground border border-border'
-                            )}
-                          >
-                            <div className="flex items-center gap-2 truncate">
-                              <Paperclip className="w-3.5 h-3.5 shrink-0" />
-                              <span className="truncate font-medium">{att.name}</span>
-                            </div>
-                            <div className="flex items-center gap-1 shrink-0 text-[10px] opacity-80">
-                              <span>{att.sizeKb} KB</span>
-                              <Download className="w-3 h-3 ml-0.5" />
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Message Meta (Time + Receipt) */}
-                  <div className="flex items-center gap-1.5 mt-1 px-1">
-                    <span className="text-[10px] text-muted-foreground">
-                      {formatDate(msg.sentAt, 'h:mm a')}
-                    </span>
-                    {isSelf && (
-                      <ReadReceipt
-                        status={msg.status}
-                        isPending={isTemp && !isFailed}
-                        isFailed={isFailed}
-                        onRetry={() =>
-                          isTemp && onRetryMessage(msg.tempId!, msg.body, msg.attachments)
-                        }
-                      />
-                    )}
-                  </div>
-                </div>
+                <MessageBubbleItem
+                  msg={msg}
+                  isSelf={isSelf}
+                  isDirect={isDirect}
+                  senderName={sender?.name}
+                  isTemp={isTemp}
+                  isFailed={isFailed}
+                  onRetryMessage={onRetryMessage}
+                />
               </React.Fragment>
             );
           })
@@ -325,3 +257,132 @@ export const MessageThread: React.FC<MessageThreadProps> = ({
     </div>
   );
 };
+
+interface MessageBubbleItemProps {
+  msg: Message;
+  isSelf: boolean;
+  isDirect: boolean;
+  senderName?: string;
+  isTemp: boolean;
+  isFailed: boolean;
+  onRetryMessage: (tempId: string, body: string, attachments: Attachment[]) => void;
+}
+
+const MessageBubbleItem = React.memo<MessageBubbleItemProps>(
+  ({ msg, isSelf, isDirect, senderName, isTemp, isFailed, onRetryMessage }) => {
+    const dispatch = useAppDispatch();
+
+    return (
+      <div
+        className={clsx(
+          'flex flex-col max-w-[80%] md:max-w-[70%]',
+          isSelf ? 'ml-auto items-end' : 'mr-auto items-start'
+        )}
+        data-testid="message-bubble"
+      >
+        {/* Sender Name in Group chats */}
+        {!isDirect && !isSelf && (
+          <span className="text-[11px] font-medium text-muted-foreground mb-1 ml-1">
+            {senderName || 'Member'}
+          </span>
+        )}
+
+        {/* Bubble Content */}
+        <div
+          className={clsx(
+            'px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed shadow-xs',
+            isSelf
+              ? 'bg-primary-600 text-white rounded-br-xs'
+              : 'bg-card border border-border text-foreground rounded-bl-xs'
+          )}
+        >
+          {msg.body && <p className="whitespace-pre-wrap break-words">{msg.body}</p>}
+
+          {/* Audio Note player if present on message */}
+          {msg.audioUrl && (
+            <div className="mt-2">
+              <AudioPlayer
+                src={msg.audioUrl}
+                title="Voice Note"
+                duration={msg.audioDurationSec}
+                compact
+              />
+            </div>
+          )}
+
+          {/* Attachments within message */}
+          {msg.attachments && msg.attachments.length > 0 && (
+            <div className="mt-2 space-y-1.5">
+              {msg.attachments.map((att) => {
+                const isAudio =
+                  att.mime?.startsWith('audio/') ||
+                  att.name?.toLowerCase().endsWith('.wav') ||
+                  att.name?.toLowerCase().endsWith('.webm') ||
+                  att.name?.toLowerCase().endsWith('.mp3') ||
+                  att.name?.toLowerCase().startsWith('voice note');
+
+                if (isAudio) {
+                  return (
+                    <AudioPlayer
+                      key={att.id}
+                      src={att.url}
+                      title={att.name || 'Voice Note'}
+                      compact
+                    />
+                  );
+                }
+
+                return (
+                  <div
+                    key={att.id}
+                    onClick={() =>
+                      dispatch(
+                        addToast({
+                          type: 'info',
+                          message: `Simulating download of ${att.name}`,
+                        })
+                      )
+                    }
+                    className={clsx(
+                      'flex items-center justify-between gap-3 p-2 rounded-xl text-xs cursor-pointer transition-colors',
+                      isSelf
+                        ? 'bg-primary-700/60 hover:bg-primary-700 text-white'
+                        : 'bg-muted/70 hover:bg-muted text-foreground border border-border'
+                    )}
+                  >
+                    <div className="flex items-center gap-2 truncate">
+                      <Paperclip className="w-3.5 h-3.5 shrink-0" />
+                      <span className="truncate font-medium">{att.name}</span>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0 text-[10px] opacity-80">
+                      <span>{att.sizeKb} KB</span>
+                      <Download className="w-3 h-3 ml-0.5" />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Message Meta (Time + Receipt) */}
+        <div className="flex items-center gap-1.5 mt-1 px-1">
+          <span className="text-[10px] text-muted-foreground">
+            {formatDate(msg.sentAt, 'h:mm a')}
+          </span>
+          {isSelf && (
+            <ReadReceipt
+              status={msg.status}
+              isPending={isTemp && !isFailed}
+              isFailed={isFailed}
+              onRetry={() =>
+                isTemp && onRetryMessage(msg.tempId!, msg.body, msg.attachments)
+              }
+            />
+          )}
+        </div>
+      </div>
+    );
+  }
+);
+MessageBubbleItem.displayName = 'MessageBubbleItem';

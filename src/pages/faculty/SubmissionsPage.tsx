@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAppDispatch } from '@/store/hooks';
 import { addToast } from '@/features/ui/uiSlice';
@@ -165,16 +165,18 @@ export const SubmissionsPage: React.FC = () => {
   const gradedCount = submissions.filter((s) => s.status === 'GRADED').length;
   const pendingCount = submissions.filter((s) => s.status === 'PENDING').length;
 
-  const filteredSubmissions = submissions.filter((s) => {
-    const q = searchQuery.toLowerCase();
-    const matchesQuery =
-      s.student.name.toLowerCase().includes(q) ||
-      (s.student.rollNo && s.student.rollNo.toLowerCase().includes(q));
+  const filteredSubmissions = useMemo(() => {
+    return submissions.filter((s) => {
+      const q = searchQuery.toLowerCase();
+      const matchesQuery =
+        s.student.name.toLowerCase().includes(q) ||
+        (s.student.rollNo && s.student.rollNo.toLowerCase().includes(q));
 
-    if (!matchesQuery) return false;
-    if (statusFilter === 'ALL') return true;
-    return s.status === statusFilter;
-  });
+      if (!matchesQuery) return false;
+      if (statusFilter === 'ALL') return true;
+      return s.status === statusFilter;
+    });
+  }, [submissions, searchQuery, statusFilter]);
 
   return (
     <div className="space-y-6">
