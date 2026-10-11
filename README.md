@@ -166,7 +166,14 @@ npm test
 # Or run with single-pass report:
 npx vitest run
 ```
-**Test Results**: `8 passed (8 test files, 87 total tests)` covering Permissions, Auth, LMS, Departments, Chat, Calls, and Analytics.
+**Frontend Test Results**: `8 passed (8 test files, 90 total tests)` covering Permissions, Auth, LMS, Departments, Chat, Calls, Analytics, and Session Restoration.
+
+### Running Backend Tests
+```powershell
+cd campusconnect-backend
+.\mvn.cmd test
+```
+**Backend Test Results**: `36 tests passing (0 failures, 0 errors)` covering AuthController, CalendarSecurity, CallLogSecurity, EmailService, GoogleAuthService, GoogleCalendarService, CalendarEvent, and UserDto.
 
 ### Production Build Verification
 ```powershell
@@ -176,7 +183,42 @@ Executes TypeScript type checker (`tsc`) and Vite production bundle compilation.
 
 ---
 
-## 6. Postman API Collection
+## 6. Optional External Integrations
+
+All external integrations are strictly optional — CampusConnect functions completely offline or in local development without external API keys:
+
+1. **Google OAuth & Google Calendar Integration**:
+   - Optional. Configure `CAMPUSCONNECT_GOOGLE_CLIENT_ID` and `CAMPUSCONNECT_GOOGLE_CLIENT_SECRET` in backend `.env` / environment, and `VITE_GOOGLE_CLIENT_ID` in frontend.
+   - When unconfigured or placeholder keys are present, the application gracefully reports unconfigured status and never fabricates fake Google Meet links or fake tokens.
+   - CSRF protection validates OAuth state parameters and verifies redirect URI destinations against allowed origins.
+
+2. **SMTP Email Delivery**:
+   - Optional. Controlled by `CAMPUSCONNECT_MAIL_ENABLED=true` (defaults to `false`).
+   - Configure `SPRING_MAIL_HOST`, `SPRING_MAIL_PORT`, `SPRING_MAIL_USERNAME`, `SPRING_MAIL_PASSWORD`.
+   - When disabled or unconfigured, the system respects user notification preferences and transparently returns `UNCONFIGURED` status rather than fabricating email delivery.
+
+---
+
+## 7. Data Architecture: Backend-Persisted vs. Mock-Backed Scope
+
+CampusConnect implements a dual-mode data model (`VITE_USE_MOCKS=false` for live backend integration, `VITE_USE_MOCKS=true` for client-side demo and testing):
+
+- **Backend-Persisted Features (Live Spring Boot REST API & MySQL/H2 Database)**:
+  - **Authentication & Sessions**: `/api/auth/login`, `/api/auth/google`, `/api/auth/me`, `/api/auth/refresh`, `/api/auth/logout` with role derivation from validated JWTs.
+  - **Calendar & Meeting Scheduler**: `/api/calendar/events` with role-based creation checks and participant authorization.
+  - **Notification Preferences**: `/api/notifications/preferences` and `/api/notifications/test-email`.
+  - **Call History Logging**: `/api/calls/logs` with caller-ID spoofing prevention.
+  - **Institutional Analytics**: `/api/analytics/{admin,hod,faculty,student}` with department isolation for HODs.
+  - **User Directory**: `/api/users/{id}` and `/api/users/{id}/can-interact`.
+
+- **Mock-Backed / Dual-Mode Features (`src/api/mock/db.ts`)**:
+  - LMS Courses, Classes, Materials, Stream Announcements.
+  - Assignment Submissions, Grading & Rubrics.
+  - MCQ Quizzes & Session Attendance Registers.
+  - Chat messaging history (persisted in browser storage with cross-tab synchronization).
+  - Departments management & HOD faculty allocations.
+
+## 8. Postman API Collection
 
 The backend REST API is completely documented and tested in Postman format:
 - **Location**: `campusconnect-backend/postman/CampusConnect.postman_collection.json`
@@ -187,7 +229,7 @@ The backend REST API is completely documented and tested in Postman format:
 
 ---
 
-## 7. Submission Checklist & Artifacts
+## 9. Submission Checklist & Artifacts
 
 - [x] Three services running and configured end-to-end.
 - [x] Branch `phase-6` committed with clean git history.

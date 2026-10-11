@@ -5,24 +5,45 @@ spring:
   application:
     name: campusconnect-backend
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/campusconnect?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true}
-    username: ${SPRING_DATASOURCE_USERNAME:root}
+    url: ${SPRING_DATASOURCE_URL:jdbc:h2:mem:campusconnect;DB_CLOSE_DELAY=-1;MODE=MySQL}
+    username: ${SPRING_DATASOURCE_USERNAME:sa}
     password: ${SPRING_DATASOURCE_PASSWORD:}
-    driver-class-name: com.mysql.cj.jdbc.Driver
+    driver-class-name: ${SPRING_DATASOURCE_DRIVER_CLASS_NAME:org.h2.Driver}
   jpa:
     hibernate:
       ddl-auto: update
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.MySQLDialect
+        dialect: ${SPRING_JPA_DATABASE_PLATFORM:org.hibernate.dialect.H2Dialect}
         format_sql: false
     show-sql: false
     open-in-view: false
+  mail:
+    host: ${SPRING_MAIL_HOST:smtp.gmail.com}
+    port: ${SPRING_MAIL_PORT:587}
+    username: ${SPRING_MAIL_USERNAME:}
+    password: ${SPRING_MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: ${SPRING_MAIL_SMTP_AUTH:true}
+          starttls:
+            enable: ${SPRING_MAIL_SMTP_STARTTLS:true}
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
 
 campusconnect:
   jwt:
-    secret: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
+    secret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
     expiration-ms: 86400000 # 24 hours
+  frontend-url: ${CAMPUSCONNECT_FRONTEND_URL:http://localhost:3000}
+  google:
+    client-id: ${CAMPUSCONNECT_GOOGLE_CLIENT_ID:}
+    client-secret: ${CAMPUSCONNECT_GOOGLE_CLIENT_SECRET:}
+  mail:
+    from: ${CAMPUSCONNECT_MAIL_FROM:noreply@campusconnect.edu}
+    enabled: ${CAMPUSCONNECT_MAIL_ENABLED:false}
   cors:
     allowed-origins:
       - http://localhost:3000

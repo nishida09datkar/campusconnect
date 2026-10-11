@@ -31,6 +31,7 @@ import {
   ExternalLink,
   Paperclip,
   Download,
+  Settings,
 } from 'lucide-react';
 
 export const NotificationsPage: React.FC = () => {
@@ -148,8 +149,8 @@ export const NotificationsPage: React.FC = () => {
         setNotifications((prev) =>
           prev.map((n) => (n.id === notif.id ? { ...n, read: true } : n))
         );
-      } catch (err) {
-        console.error(err);
+      } catch (_err) {
+        // Ignored
       }
     }
 
@@ -220,17 +221,27 @@ export const NotificationsPage: React.FC = () => {
         title="Notification Center"
         description="Institutional circulars, assignment updates, grading feedback, and schedule alerts"
         actions={
-          unreadCount > 0 && (
+          <div className="flex items-center gap-2">
             <Button
               variant="outline"
               size="sm"
-              onClick={handleMarkAllRead}
-              isLoading={isMarkingAll}
-              className="gap-2 shadow-sm text-xs"
+              onClick={() => navigate('/profile')}
+              className="gap-1.5 shadow-sm text-xs"
             >
-              <CheckCheck className="w-4 h-4" /> Mark All as Read
+              <Settings className="w-3.5 h-3.5 text-primary-500" /> Notification Preferences
             </Button>
-          )
+            {unreadCount > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleMarkAllRead}
+                isLoading={isMarkingAll}
+                className="gap-2 shadow-sm text-xs"
+              >
+                <CheckCheck className="w-4 h-4" /> Mark All as Read
+              </Button>
+            )}
+          </div>
         }
       />
 

@@ -8,11 +8,16 @@ export interface CalendarEvent {
   endTime: string;   // ISO 8601 string
   type: CalendarEventType;
   creatorId?: string;
+  creatorName?: string;
   departmentId?: string;
   classId?: string;
   participantIds?: string[];
   link?: string;
   location?: string;
+  meetUrl?: string;
+  googleCalendarEventUrl?: string;
+  googleCalendarAddUrl?: string;
+  googleEventId?: string;
 }
 
 export interface Meeting {
@@ -25,4 +30,6 @@ export interface Meeting {
   participantIds: string[];
   location?: string;
   link?: string;
+  meetUrl?: string;
+  googleCalendarEventUrl?: string;
 }

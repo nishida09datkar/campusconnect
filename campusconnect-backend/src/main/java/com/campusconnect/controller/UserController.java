@@ -44,8 +44,9 @@ public class UserController {
 
     @GetMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<User> getUserById(@PathVariable String id) {
+    public ResponseEntity<com.campusconnect.dto.user.UserDto> getUserById(@PathVariable String id) {
         return userRepository.findById(id)
+                .map(com.campusconnect.dto.user.UserDto::from)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }

@@ -5,11 +5,14 @@ import com.campusconnect.dto.auth.LoginRequest;
 import com.campusconnect.entity.User;
 import com.campusconnect.repository.UserRepository;
 import com.campusconnect.security.JwtTokenProvider;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Service
 public class AuthService {
+
+    private static final String INVALID_CREDENTIALS = "Invalid email or password";
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -22,11 +25,15 @@ public class AuthService {
     }
 
     public AuthResponse login(LoginRequest request) {
-        User user = userRepository.findByEmail(request.getEmail().toLowerCase())
-                .orElseThrow(() -> new RuntimeException("Invalid credentials: user not found"));
+        if (request.getEmail() == null || request.getPassword() == null) {
+            throw new BadCredentialsException(INVALID_CREDENTIALS);
+        }
 
-        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            throw new RuntimeException("Invalid credentials: incorrect password");
+        User user = userRepository.findByEmail(request.getEmail().toLowerCase().trim())
+                .orElseThrow(() -> new BadCredentialsException(INVALID_CREDENTIALS));
+
+        if (!user.isActive() || !passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            throw new BadCredentialsException(INVALID_CREDENTIALS);
         }
 
         String token = tokenProvider.generateToken(user.getId(), user.getEmail(), user.getRole().name());

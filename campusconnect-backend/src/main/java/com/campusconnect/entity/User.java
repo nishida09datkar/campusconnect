@@ -14,6 +14,7 @@ public class User {
     @Column(nullable = false, unique = true, length = 128)
     private String email;
 
+    @com.fasterxml.jackson.annotation.JsonIgnore
     @Column(nullable = false)
     private String password;
 
@@ -28,7 +29,7 @@ public class User {
     private String departmentId;
 
     private String avatar;
-
+    @Column(name = "academic_year")
     private Integer year;
 
     private Integer semester;

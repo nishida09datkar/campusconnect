@@ -7,7 +7,16 @@ import globals from 'globals';
 
 export default [
   {
-    ignores: ['dist', 'node_modules', 'coverage', '*.config.js', '*.config.d.ts', 'tsconfig.*.tsbuildinfo'],
+    ignores: [
+      'dist',
+      'node_modules',
+      'coverage',
+      'campusconnect-signaling/**',
+      'campusconnect-backend/**',
+      '*.config.js',
+      '*.config.d.ts',
+      'tsconfig.*.tsbuildinfo',
+    ],
   },
   js.configs.recommended,
   {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAppDispatch } from '@/store/hooks';
 import { addToast } from '@/features/ui/uiSlice';
@@ -48,7 +48,7 @@ export const SubmissionsPage: React.FC = () => {
   const [isGradingSubmitting, setIsGradingSubmitting] = useState(false);
   const [gradeError, setGradeError] = useState('');
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     if (!assignmentId) return;
     try {
       setIsLoading(true);
@@ -68,11 +68,24 @@ export const SubmissionsPage: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [assignmentId, dispatch]);
 
   useEffect(() => {
     loadData();
-  }, [assignmentId]);
+  }, [loadData]);
+
+  const filteredSubmissions = useMemo(() => {
+    return submissions.filter((s) => {
+      const q = searchQuery.toLowerCase();
+      const matchesQuery =
+        s.student.name.toLowerCase().includes(q) ||
+        (s.student.rollNo && s.student.rollNo.toLowerCase().includes(q));
+
+      if (!matchesQuery) return false;
+      if (statusFilter === 'ALL') return true;
+      return s.status === statusFilter;
+    });
+  }, [submissions, searchQuery, statusFilter]);
 
   const handleOpenGradeModal = (sub: EnrichedSubmission) => {
     setGradingSubmission(sub);
@@ -164,19 +177,6 @@ export const SubmissionsPage: React.FC = () => {
   const submittedCount = submissions.filter((s) => s.status === 'SUBMITTED' || s.status === 'LATE').length;
   const gradedCount = submissions.filter((s) => s.status === 'GRADED').length;
   const pendingCount = submissions.filter((s) => s.status === 'PENDING').length;
-
-  const filteredSubmissions = useMemo(() => {
-    return submissions.filter((s) => {
-      const q = searchQuery.toLowerCase();
-      const matchesQuery =
-        s.student.name.toLowerCase().includes(q) ||
-        (s.student.rollNo && s.student.rollNo.toLowerCase().includes(q));
-
-      if (!matchesQuery) return false;
-      if (statusFilter === 'ALL') return true;
-      return s.status === statusFilter;
-    });
-  }, [submissions, searchQuery, statusFilter]);
 
   return (
     <div className="space-y-6">

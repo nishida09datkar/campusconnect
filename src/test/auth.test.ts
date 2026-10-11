@@ -63,4 +63,40 @@ describe('Auth Service and Redux Slice Unit Tests', () => {
       })
     );
   });
+
+  it('fetchMe restores active user profile from session hint', async () => {
+    // First login as Admin to set session hint
+    await authService.login({
+      email: 'admin@campus.test',
+      password: 'any-password',
+    });
+
+    const user = await authService.fetchMe();
+    expect(user.email).toBe('admin@campus.test');
+    expect(user.role).toBe('ADMIN');
+  });
+
+  it('refreshToken generates fresh access token', async () => {
+    await authService.login({
+      email: 'admin@campus.test',
+      password: 'any-password',
+    });
+
+    const refreshRes = await authService.refreshToken();
+    expect(refreshRes.accessToken).toContain('mock-refreshed-jwt');
+  });
+
+  it('logout clears session hint and access token', async () => {
+    await authService.login({
+      email: 'admin@campus.test',
+      password: 'any-password',
+    });
+
+    await authService.logout();
+    await expect(authService.fetchMe()).rejects.toEqual(
+      expect.objectContaining({
+        status: 401,
+      })
+    );
+  });
 });

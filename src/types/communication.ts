@@ -50,3 +50,23 @@ export type CallState =
   | 'connected'
   | 'ended'
   | 'failed';
+
+export interface NotificationPreferences {
+  userId?: string;
+  emailNotifications: boolean;
+  inAppNotifications: boolean;
+  assignmentAlerts: boolean;
+  announcementAlerts: boolean;
+  meetingAlerts: boolean;
+  chatAlerts: boolean;
+  attendanceAlerts: boolean;
+  digestFrequency: 'IMMEDIATE' | 'DAILY' | 'WEEKLY' | string;
+}
+
+export interface EmailSendResult {
+  status: 'SENT' | 'SUPPRESSED' | 'UNCONFIGURED' | 'FAILED' | string;
+  recipient: string;
+  message: string;
+  eventType: string;
+  timestamp: number;
+}

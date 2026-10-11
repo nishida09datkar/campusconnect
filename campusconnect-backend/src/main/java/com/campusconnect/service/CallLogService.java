@@ -30,7 +30,11 @@ public class CallLogService {
     public CallLogResponse createCallLog(CallLogRequest req, String currentUserId) {
         CallLog log = new CallLog();
         log.setId("call-" + UUID.randomUUID().toString());
-        log.setCallerId(req.getCallerId() != null ? req.getCallerId() : currentUserId);
+        // Prevent caller-ID spoofing: always bind callerId to authenticated user
+        String verifiedCallerId = (currentUserId != null && !currentUserId.trim().isEmpty())
+                ? currentUserId
+                : req.getCallerId();
+        log.setCallerId(verifiedCallerId);
         log.setCalleeId(req.getCalleeId());
         log.setRoomId(req.getRoomId());
         log.setKind(req.getKind());

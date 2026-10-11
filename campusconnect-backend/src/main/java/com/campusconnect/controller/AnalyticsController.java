@@ -4,6 +4,9 @@ import com.campusconnect.dto.analytics.AdminAnalyticsDto;
 import com.campusconnect.dto.analytics.FacultyAnalyticsDto;
 import com.campusconnect.dto.analytics.HodAnalyticsDto;
 import com.campusconnect.dto.analytics.StudentAnalyticsDto;
+import com.campusconnect.entity.Role;
+import com.campusconnect.entity.User;
+import com.campusconnect.repository.UserRepository;
 import com.campusconnect.service.AnalyticsService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -16,9 +19,11 @@ import org.springframework.web.bind.annotation.*;
 public class AnalyticsController {
 
     private final AnalyticsService analyticsService;
+    private final UserRepository userRepository;
 
-    public AnalyticsController(AnalyticsService analyticsService) {
+    public AnalyticsController(AnalyticsService analyticsService, UserRepository userRepository) {
         this.analyticsService = analyticsService;
+        this.userRepository = userRepository;
     }
 
     @GetMapping("/admin")
@@ -31,8 +36,16 @@ public class AnalyticsController {
     @GetMapping("/hod")
     @PreAuthorize("hasAnyRole('HOD', 'ADMIN')")
     public ResponseEntity<HodAnalyticsDto> getHodAnalytics(
-            @RequestParam(required = false) String departmentId
+            @RequestParam(required = false) String departmentId,
+            Authentication authentication
     ) {
+        if (authentication != null) {
+            User currentUser = userRepository.findById(authentication.getName()).orElse(null);
+            // HODs are restricted to their own department metrics; Admins can view any department
+            if (currentUser != null && currentUser.getRole() == Role.HOD) {
+                departmentId = currentUser.getDepartmentId();
+            }
+        }
         HodAnalyticsDto dto = analyticsService.getHodAnalytics(departmentId);
         return ResponseEntity.ok(dto);
     }

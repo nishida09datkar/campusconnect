@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { AuthState, LoginRequest, AuthResponse, User, ApiError } from '@/types';
 import { authService } from '@/api/services/auth.service';
+import { getAccessToken } from '@/api/axios';
 
 const initialState: AuthState = {
   user: null,
@@ -14,6 +15,18 @@ export const loginUser = createAsyncThunk<AuthResponse, LoginRequest, { rejectVa
   async (credentials, { rejectWithValue }) => {
     try {
       const response = await authService.login(credentials);
+      return response;
+    } catch (err) {
+      return rejectWithValue(err as ApiError);
+    }
+  }
+);
+
+export const loginWithGoogle = createAsyncThunk<AuthResponse, string, { rejectValue: ApiError }>(
+  'auth/loginWithGoogle',
+  async (idToken, { rejectWithValue }) => {
+    try {
+      const response = await authService.loginWithGoogle(idToken);
       return response;
     } catch (err) {
       return rejectWithValue(err as ApiError);
@@ -68,6 +81,21 @@ export const authSlice = createSlice({
         state.status = 'failed';
         state.error = action.payload?.message || 'Login failed';
       })
+      // Google Login
+      .addCase(loginWithGoogle.pending, (state) => {
+        state.status = 'loading';
+        state.error = null;
+      })
+      .addCase(loginWithGoogle.fulfilled, (state, action) => {
+        state.status = 'authenticated';
+        state.user = action.payload.user;
+        state.accessToken = action.payload.accessToken;
+        state.error = null;
+      })
+      .addCase(loginWithGoogle.rejected, (state, action) => {
+        state.status = 'failed';
+        state.error = action.payload?.message || 'Google Sign-In failed';
+      })
       // Fetch me
       .addCase(fetchCurrentUser.pending, (state) => {
         state.status = 'loading';
@@ -75,6 +103,7 @@ export const authSlice = createSlice({
       .addCase(fetchCurrentUser.fulfilled, (state, action) => {
         state.status = 'authenticated';
         state.user = action.payload;
+        state.accessToken = getAccessToken();
         state.error = null;
       })
       .addCase(fetchCurrentUser.rejected, (state) => {

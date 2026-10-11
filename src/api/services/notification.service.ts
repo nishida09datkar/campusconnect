@@ -1,6 +1,8 @@
+import { apiClient } from '../axios';
+import { USE_MOCKS } from '../config';
 import { db } from '../mock/db';
 import { delay } from '../mock/delay';
-import { AppNotification } from '@/types';
+import { AppNotification, NotificationPreferences, EmailSendResult } from '@/types';
 
 type NotificationListener = () => void;
 const listeners = new Set<NotificationListener>();
@@ -77,5 +79,80 @@ export const notificationService = {
     db.persistNotifications();
     this.emitChange();
     return { ...newNotif };
+  },
+
+  async getPreferences(): Promise<NotificationPreferences> {
+    const getLocalPrefs = (): NotificationPreferences => {
+      const saved = localStorage.getItem('campusconnect_notification_preferences');
+      if (saved) {
+        try { return JSON.parse(saved); } catch { /* ignore */ }
+      }
+      return {
+        emailNotifications: true,
+        inAppNotifications: true,
+        assignmentAlerts: true,
+        announcementAlerts: true,
+        meetingAlerts: true,
+        chatAlerts: false,
+        attendanceAlerts: true,
+        digestFrequency: 'IMMEDIATE',
+      };
+    };
+
+    if (USE_MOCKS) {
+      await delay(50, 100);
+      return getLocalPrefs();
+    }
+
+    try {
+      const response = await apiClient.get<NotificationPreferences>('/api/notifications/preferences');
+      return response.data;
+    } catch {
+      return getLocalPrefs();
+    }
+  },
+
+  async updatePreferences(prefs: NotificationPreferences): Promise<NotificationPreferences> {
+    localStorage.setItem('campusconnect_notification_preferences', JSON.stringify(prefs));
+    if (USE_MOCKS) {
+      await delay(50, 100);
+      return prefs;
+    }
+
+    try {
+      const response = await apiClient.put<NotificationPreferences>('/api/notifications/preferences', prefs);
+      return response.data;
+    } catch {
+      return prefs;
+    }
+  },
+
+  async sendTestEmail(): Promise<EmailSendResult> {
+    if (USE_MOCKS) {
+      await delay(200, 350);
+      return {
+        status: 'UNCONFIGURED',
+        recipient: 'current_user@campus.test',
+        message: 'Mock Mode: Email delivery simulation active. Set VITE_USE_MOCKS=false and configure SMTP in backend for live emails.',
+        eventType: 'TEST',
+        timestamp: Date.now(),
+      };
+    }
+
+    try {
+      const response = await apiClient.post<EmailSendResult>('/api/notifications/test-email');
+      return response.data;
+    } catch (err: unknown) {
+      const msg = err && typeof err === 'object' && 'response' in err
+        ? (err as { response?: { data?: { message?: string } } }).response?.data?.message || 'SMTP service error'
+        : 'Failed to contact backend notification service';
+      return {
+        status: 'UNCONFIGURED',
+        recipient: 'current_user',
+        message: msg,
+        eventType: 'TEST',
+        timestamp: Date.now(),
+      };
+    }
   },
 };

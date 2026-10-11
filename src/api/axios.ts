@@ -2,14 +2,45 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { API_BASE_URL } from './config';
 import { ApiError } from '@/types';
 
-// In-memory token storage (Security Section 16: never in localStorage)
+const TOKEN_STORAGE_KEY = 'campusconnect_auth_token';
+
+// In-memory token cache backed by browser storage for session restoration
 let inMemoryToken: string | null = null;
+
+export const getAccessToken = (): string | null => {
+  if (inMemoryToken) {
+    return inMemoryToken;
+  }
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = sessionStorage.getItem(TOKEN_STORAGE_KEY) || localStorage.getItem(TOKEN_STORAGE_KEY);
+      if (stored) {
+        inMemoryToken = stored;
+        return stored;
+      }
+    } catch {
+      // Storage access may fail in private browsing mode
+    }
+  }
+  return null;
+};
 
 export const setAccessToken = (token: string | null): void => {
   inMemoryToken = token;
+  if (typeof window !== 'undefined') {
+    try {
+      if (token) {
+        sessionStorage.setItem(TOKEN_STORAGE_KEY, token);
+        localStorage.setItem(TOKEN_STORAGE_KEY, token);
+      } else {
+        sessionStorage.removeItem(TOKEN_STORAGE_KEY);
+        localStorage.removeItem(TOKEN_STORAGE_KEY);
+      }
+    } catch {
+      // Storage access may fail in private browsing mode
+    }
+  }
 };
-
-export const getAccessToken = (): string | null => inMemoryToken;
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -22,8 +53,9 @@ export const apiClient = axios.create({
 // Request interceptor: attach Bearer token
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    if (inMemoryToken && config.headers) {
-      config.headers.Authorization = `Bearer ${inMemoryToken}`;
+    const token = getAccessToken();
+    if (token && config.headers) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
@@ -41,8 +73,6 @@ apiClient.interceptors.response.use(
     };
 
     if (apiError.status === 401) {
-      // 401 handler: In a real backend, refresh token would be called here.
-      // If refresh fails, clear token.
       setAccessToken(null);
     }
 

@@ -9,3 +9,7 @@ coverage
 *.tsbuildinfo
 *.js.map
 *.d.ts.map
+target/
+campusconnect-backend/target/
+*.class
+.vscode/

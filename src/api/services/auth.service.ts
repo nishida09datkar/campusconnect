@@ -1,9 +1,36 @@
-import { apiClient, setAccessToken } from '../axios';
+import { apiClient, setAccessToken, getAccessToken } from '../axios';
 import { USE_MOCKS } from '../config';
 import { db } from '../mock/db';
 import { delay } from '../mock/delay';
-import { AuthResponse, LoginRequest, User, ApiError } from '@/types';
+import { AuthResponse, LoginRequest, User, ApiError, Role } from '@/types';
 import { setSessionHint, clearSessionHint, getSessionHint } from '@/utils/storage';
+
+interface BackendAuthData {
+  token?: string;
+  accessToken?: string;
+  userId?: string;
+  email?: string;
+  name?: string;
+  role?: Role;
+  departmentId?: string;
+  user?: User;
+}
+
+function normalizeAuthResponse(data: BackendAuthData): AuthResponse {
+  const accessToken = data.accessToken || data.token || '';
+  if (data.user) {
+    return { accessToken, user: data.user };
+  }
+  const user: User = {
+    id: data.userId || 'user-unknown',
+    name: data.name || 'User',
+    email: data.email || '',
+    role: data.role || 'STUDENT',
+    departmentId: data.departmentId,
+    isActive: true,
+  };
+  return { accessToken, user };
+}
 
 export const authService = {
   async login(request: LoginRequest): Promise<AuthResponse> {
@@ -45,14 +72,43 @@ export const authService = {
       };
     }
 
-    const response = await apiClient.post<AuthResponse>('/api/auth/login', request);
-    setAccessToken(response.data.accessToken);
+    const response = await apiClient.post<BackendAuthData>('/api/auth/login', request);
+    const authData = normalizeAuthResponse(response.data);
+    setAccessToken(authData.accessToken);
     setSessionHint({
-      userId: response.data.user.id,
-      email: response.data.user.email,
-      role: response.data.user.role,
+      userId: authData.user.id,
+      email: authData.user.email,
+      role: authData.user.role,
     });
-    return response.data;
+    return authData;
+  },
+
+  async loginWithGoogle(idToken: string): Promise<AuthResponse> {
+    try {
+      const response = await apiClient.post<BackendAuthData>('/api/auth/google', { idToken });
+      const authData = normalizeAuthResponse(response.data);
+      setAccessToken(authData.accessToken);
+      setSessionHint({
+        userId: authData.user.id,
+        email: authData.user.email,
+        role: authData.user.role,
+      });
+      return authData;
+    } catch (err: unknown) {
+      if (USE_MOCKS) {
+        await delay(300, 500);
+        const student = db.users.find((u) => u.role === 'STUDENT') || db.users[0];
+        const mockToken = `mock-google-jwt-token-for-${student.id}-${Date.now()}`;
+        setAccessToken(mockToken);
+        setSessionHint({
+          userId: student.id,
+          email: student.email,
+          role: student.role,
+        });
+        return { accessToken: mockToken, user: student };
+      }
+      throw err;
+    }
   },
 
   async fetchMe(): Promise<User> {
@@ -81,6 +137,16 @@ export const authService = {
       // Re-establish mock in-memory token
       setAccessToken(`mock-jwt-restored-${user.id}`);
       return user;
+    }
+
+    const token = getAccessToken();
+    if (!token) {
+      clearSessionHint();
+      const error: ApiError = {
+        status: 401,
+        message: 'No active session token found',
+      };
+      throw error;
     }
 
     const response = await apiClient.get<User>('/api/auth/me');

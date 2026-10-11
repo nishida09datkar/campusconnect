@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { getInitials } from '@/utils/format';
@@ -10,17 +10,13 @@ export interface AvatarProps {
   className?: string;
 }
 
-export const Avatar: React.FC<AvatarProps> = ({ src, name = '', size = 'md', className }) => {
-  const [hasError, setHasError] = useState(false);
-
+export const Avatar: React.FC<AvatarProps> = ({ name = '', size = 'md', className }) => {
   const sizes = {
     sm: 'h-8 w-8 text-xs',
     md: 'h-10 w-10 text-sm',
     lg: 'h-12 w-12 text-base',
     xl: 'h-16 w-16 text-lg',
   };
-
-  const showImage = src && !hasError;
 
   return (
     <div
@@ -32,16 +28,7 @@ export const Avatar: React.FC<AvatarProps> = ({ src, name = '', size = 'md', cla
         )
       )}
     >
-      {showImage ? (
-        <img
-          src={src}
-          alt={name}
-          onError={() => setHasError(true)}
-          className="h-full w-full object-cover"
-        />
-      ) : (
-        <span>{getInitials(name)}</span>
-      )}
+      <span>{getInitials(name)}</span>
     </div>
   );
 };
