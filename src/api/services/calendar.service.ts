@@ -45,8 +45,11 @@ export const calendarService = {
     // 1. Base events from backend or db.events
     const baseEvents = backendEvents.length > 0 ? backendEvents : [...db.events];
 
-    // 2. Synthesize assignment deadlines as calendar events
-    const assignmentEvents: CalendarEvent[] = db.assignments.map((assign) => {
+    // 2. Synthesize assignment deadlines as calendar events (students never see unpublished drafts)
+    const visibleAssignments = db.assignments.filter(
+      (assign) => filters.role !== 'STUDENT' || assign.status !== 'DRAFT'
+    );
+    const assignmentEvents: CalendarEvent[] = visibleAssignments.map((assign) => {
       const cls = db.classes.find((c) => c.id === assign.classId);
       return {
         id: `evt-assign-${assign.id}`,

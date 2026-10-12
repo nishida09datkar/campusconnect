@@ -1,5 +1,11 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { render, renderHook, act, screen, fireEvent, waitFor } from '@testing-library/react';
+import type { ReactNode } from 'react';
+import { configureStore } from '@reduxjs/toolkit';
+import authReducer from '@/features/auth/authSlice';
+import chatReducer from '@/features/chat/chatSlice';
+import { useChat } from '@/features/chat/useChat';
+import { socketClient } from '@/socket/socketClient';
 import { db } from '@/api/mock/db';
 import { chatService } from '@/api/services/chat.service';
 import { presenceService } from '@/api/services/presence.service';
@@ -14,8 +20,8 @@ import {
   addOptimisticMessage,
   messageAckReceived,
 } from '@/features/chat/chatSlice';
-import { selectMessagesForConversation } from '@/features/chat/chatSelectors';
-import { PresenceState, Message } from '@/types';
+import { selectMessagesForConversation, selectChatLoading } from '@/features/chat/chatSelectors';
+import { PresenceState, Message, User } from '@/types';
 
 // Polyfills for jsdom
 if (typeof window.URL.createObjectURL === 'undefined') {
@@ -388,6 +394,134 @@ describe('Phase 4 — Chat & Real-Time Presence Specification Tests', () => {
       // 4. Verify thread contains reply
       messages = selectMessagesForConversation(conv.id)(store.getState());
       expect(messages.some((m) => m.id === 'msg-reply-1000')).toBe(true);
+    });
+  });
+
+  /* ===================================================================
+   * 6. useChat HOOK: REAL-TIME DELIVERY
+   * =================================================================== */
+  describe('6. useChat Hook — Real-Time Delivery', () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    // Mounts useChat as the given user and opens the conversation
+    const openConversation = async (user: User, conversationId: string) => {
+      const hookStore = configureStore({
+        reducer: { auth: authReducer, chat: chatReducer },
+        preloadedState: {
+          auth: { user, accessToken: 'mock-token', status: 'authenticated' as const, error: null },
+        },
+      });
+      const wrapper = ({ children }: { children: ReactNode }) => (
+        <Provider store={hookStore}>{children}</Provider>
+      );
+      const hook = renderHook(() => useChat(), { wrapper });
+
+      await waitFor(() => {
+        expect(hook.result.current.conversations.some((c) => c.id === conversationId)).toBe(true);
+      });
+      act(() => {
+        hook.result.current.selectConversation(conversationId);
+      });
+      await waitFor(() => {
+        expect(hook.result.current.activeConversation?.id).toBe(conversationId);
+      });
+      return hook;
+    };
+
+    it('addresses chat:send to the other members of the conversation', async () => {
+      const conv = await chatService.getOrCreateDirectConversation(stu1.id, facNeha.id);
+      const emitSpy = vi.spyOn(socketClient, 'emit');
+      const { result } = await openConversation(stu1, conv.id);
+
+      act(() => {
+        result.current.sendMessage('Is the lab open today?');
+      });
+
+      expect(emitSpy).toHaveBeenCalledWith(
+        'chat:send',
+        expect.objectContaining({ body: 'Is the lab open today?', recipientIds: [facNeha.id] })
+      );
+
+      // Let the mock server confirm the message before the next test resets the db
+      await waitFor(() => {
+        expect(result.current.messages.some((m) => m.id.startsWith('msg-'))).toBe(true);
+      });
+    });
+
+    it('addresses chat:typing to the other members of the conversation', async () => {
+      const conv = await chatService.getOrCreateDirectConversation(stu1.id, facNeha.id);
+      const emitSpy = vi.spyOn(socketClient, 'emit');
+      const { result } = await openConversation(stu1, conv.id);
+
+      act(() => {
+        result.current.setTyping(true);
+      });
+
+      expect(emitSpy).toHaveBeenCalledWith(
+        'chat:typing',
+        expect.objectContaining({ isTyping: true, recipientIds: [facNeha.id] })
+      );
+    });
+
+    it('addresses chat:read to the other members when a conversation is opened', async () => {
+      const conv = await chatService.getOrCreateDirectConversation(stu1.id, facNeha.id);
+      const emitSpy = vi.spyOn(socketClient, 'emit');
+      await openConversation(stu1, conv.id);
+
+      await waitFor(() => {
+        expect(emitSpy).toHaveBeenCalledWith(
+          'chat:read',
+          expect.objectContaining({ conversationId: conv.id, recipientIds: [facNeha.id] })
+        );
+      });
+    });
+
+    it('loads the messages of an opened conversation once', async () => {
+      const conv = await chatService.getOrCreateDirectConversation(stu1.id, facNeha.id);
+      const getMessagesSpy = vi.spyOn(chatService, 'getMessages');
+      await openConversation(stu1, conv.id);
+
+      // Long enough for several mock round-trips, so a re-triggering effect shows up
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      });
+
+      expect(getMessagesSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('marks a message as read when it arrives in the open conversation', async () => {
+      const conv = await chatService.getOrCreateDirectConversation(stu1.id, facNeha.id);
+      await openConversation(stu1, conv.id);
+      const emitSpy = vi.spyOn(socketClient, 'emit');
+      // Let the read receipt sent on open go out before watching for a new one
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 300));
+      });
+      emitSpy.mockClear();
+
+      act(() => {
+        mockSocket.emit('chat:send', {
+          conversationId: conv.id,
+          senderId: facNeha.id,
+          body: 'Yes, until 5 PM.',
+          tempId: 'temp-reply-1',
+        });
+      });
+
+      await waitFor(() => {
+        expect(emitSpy).toHaveBeenCalledWith(
+          'chat:read',
+          expect.objectContaining({ conversationId: conv.id, userId: stu1.id })
+        );
+      });
+    });
+
+    it('selectChatLoading returns the same reference while the loading flags are unchanged', () => {
+      const state = store.getState();
+
+      expect(selectChatLoading(state)).toBe(selectChatLoading(state));
     });
   });
 });

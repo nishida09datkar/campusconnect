@@ -4,13 +4,27 @@ import { renderHook } from '@testing-library/react';
 import React from 'react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
+import { MemoryRouter } from 'react-router-dom';
+import { format } from 'date-fns';
 import authReducer from '@/features/auth/authSlice';
 import { db } from '@/api/mock/db';
 import { socketClient } from '@/socket/socketClient';
 import { useWebRTC } from '@/hooks/useWebRTC';
 import { IncomingCallModal } from '@/components/calls/IncomingCallModal';
 import { CallControls } from '@/components/calls/CallControls';
+import { CallProvider, useCall } from '@/components/calls/CallContext';
 import { ActiveCallData } from '@/hooks/useWebRTC';
+import { callLogService } from '@/api/services/callLog.service';
+import { CallHistoryPage } from '@/pages/shared/CallHistoryPage';
+
+// Lets a test run the hook the way it behaves against the live backend, where USE_MOCKS is off
+const runtimeConfig = vi.hoisted(() => ({ useMocks: true }));
+vi.mock('@/api/config', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/api/config')>()),
+  get USE_MOCKS() {
+    return runtimeConfig.useMocks;
+  },
+}));
 
 // Web Audio API mock
 class MockAudioContext {
@@ -371,6 +385,276 @@ describe('Phase 5 — WebRTC Calls & Live Lectures Specification Tests', () => {
       const endBtn = screen.getByLabelText(/End Call/i);
       fireEvent.click(endBtn);
       expect(onEndCall).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  /* ===================================================================
+   * 6. CALL SIGNALING EDGE CASES
+   * =================================================================== */
+  describe('6. Call Signaling Edge Cases', () => {
+    const StartCallButton = () => {
+      const { startCall } = useCall();
+      return <button onClick={() => startCall(facNeha.id, 'VOICE')}>Start test call</button>;
+    };
+
+    const renderCallUi = (user: any) =>
+      render(
+        <Provider store={createTestStore(user)}>
+          <CallProvider>
+            <StartCallButton />
+          </CallProvider>
+        </Provider>
+      );
+
+    it('Cancelling an outgoing call tells the callee to stop ringing', async () => {
+      const emitSpy = vi.spyOn(socketClient, 'emit');
+      renderCallUi(stu1);
+
+      await act(async () => {
+        fireEvent.click(screen.getByText('Start test call'));
+      });
+      fireEvent.click(screen.getByRole('button', { name: /cancel/i }));
+
+      expect(emitSpy).toHaveBeenCalledWith(
+        'call:cancel',
+        expect.objectContaining({ calleeId: facNeha.id })
+      );
+      expect(screen.queryByRole('button', { name: /cancel/i })).toBeNull();
+    });
+
+    const renderCallHook = (user: any) => {
+      const store = createTestStore(user);
+      const wrapper = ({ children }: { children: React.ReactNode }) => (
+        <Provider store={store}>{children}</Provider>
+      );
+      return renderHook(() => useWebRTC(), { wrapper });
+    };
+
+    // Makes facNeha ring stu1
+    const ringStudent = (callId: string) => {
+      act(() => {
+        socketClient.emit('call:incoming', {
+          callId,
+          callerId: facNeha.id,
+          callerName: facNeha.name,
+          calleeId: stu1.id,
+          kind: 'VOICE',
+        });
+      });
+    };
+
+    it("Keeps ringing when somebody else's call ends", () => {
+      const { result } = renderCallHook(stu1);
+      ringStudent('call-mine');
+      expect(result.current.callState).toBe('ringing');
+
+      act(() => {
+        socketClient.emit('call:end', {
+          callId: 'call-of-others',
+          callerId: 'user-stu-2',
+          calleeId: 'user-fac-rohan',
+          kind: 'VOICE',
+          startedAt: new Date().toISOString(),
+          endedAt: new Date().toISOString(),
+          outcome: 'COMPLETED',
+        });
+      });
+
+      expect(result.current.callState).toBe('ringing');
+      expect(result.current.activeCall?.callId).toBe('call-mine');
+    });
+
+    it('Can receive a new call after a signaling error', async () => {
+      const onSpy = vi.spyOn(socketClient, 'on');
+      const { result } = renderCallHook(stu1);
+      // The mock socket never raises call:error itself, so call the registered listener directly
+      const raiseCallError = onSpy.mock.calls.find(([event]) => event === 'call:error')![1] as (
+        payload: { message: string }
+      ) => void;
+
+      await act(async () => {
+        await result.current.startCall(facNeha.id, 'VOICE');
+      });
+      act(() => {
+        raiseCallError({ message: 'Callee could not be reached' });
+      });
+      expect(result.current.activeCall).toBeNull();
+
+      ringStudent('call-after-error');
+      expect(result.current.callState).toBe('ringing');
+    });
+
+    it('Ignores a late decline once the call has been answered', async () => {
+      const { result } = renderCallHook(stu1);
+      await act(async () => {
+        await result.current.startCall(facNeha.id, 'VOICE');
+      });
+      const callId = result.current.activeCall!.callId;
+      const respond = (accepted: boolean) =>
+        socketClient.emit('call:response', {
+          callId,
+          callerId: stu1.id,
+          calleeId: facNeha.id,
+          accepted,
+          reason: accepted ? undefined : 'Timeout',
+        });
+
+      await act(async () => {
+        respond(true);
+      });
+      // e.g. the callee's second tab timing out after the first one answered
+      await act(async () => {
+        respond(false);
+      });
+
+      expect(result.current.callState).toBe('connecting');
+      expect(result.current.activeCall?.callId).toBe(callId);
+    });
+
+    it('Shows the call screen with a hang-up control while the call is connecting', async () => {
+      renderCallUi(stu1);
+      ringStudent('call-connecting');
+
+      await act(async () => {
+        fireEvent.click(screen.getByLabelText(/Accept Call/i));
+      });
+
+      expect(screen.getByLabelText(/End Call/i)).toBeDefined();
+    });
+
+    const answerThenHangUp = async (callId: string) => {
+      const { result } = renderCallHook(stu1);
+      ringStudent(callId);
+      await act(async () => {
+        await result.current.acceptCall();
+      });
+      act(() => {
+        result.current.endCall();
+      });
+      return result;
+    };
+
+    it('Leaves the call log to the signaling server when the backend is live', async () => {
+      runtimeConfig.useMocks = false;
+      const logSpy = vi.spyOn(callLogService, 'createCallLog').mockResolvedValue({} as never);
+      try {
+        const result = await answerThenHangUp('call-live');
+
+        expect(result.current.callState).toBe('ended');
+        // The server records every call once; a second write from here would duplicate it under the wrong caller
+        expect(logSpy).not.toHaveBeenCalled();
+      } finally {
+        logSpy.mockRestore();
+        runtimeConfig.useMocks = true;
+      }
+    });
+
+    it('Records the call log itself when running on mock data', async () => {
+      const logSpy = vi.spyOn(callLogService, 'createCallLog');
+      try {
+        await answerThenHangUp('call-mock');
+
+        expect(logSpy).toHaveBeenCalledTimes(1);
+        expect(logSpy).toHaveBeenCalledWith(
+          expect.objectContaining({ callerId: facNeha.id, calleeId: stu1.id, outcome: 'COMPLETED' })
+        );
+      } finally {
+        logSpy.mockRestore();
+      }
+    });
+  });
+
+  describe('7. Call History Filters', () => {
+    it('Returns only the calls that started inside the chosen date range', async () => {
+      const callOn = (startedAt: string) =>
+        callLogService.createCallLog({ callerId: facNeha.id, calleeId: stu1.id, kind: 'VOICE', startedAt, outcome: 'COMPLETED' });
+      await callOn('2020-01-10T10:00:00.000Z');
+      await callOn('2020-01-20T10:00:00.000Z');
+      await callOn('2020-01-30T10:00:00.000Z');
+
+      const logs = await callLogService.getCallLogs({
+        startDate: '2020-01-15T00:00:00.000Z',
+        endDate: '2020-01-25T00:00:00.000Z',
+      });
+
+      expect(logs.map((l) => l.startedAt)).toEqual(['2020-01-20T10:00:00.000Z']);
+    });
+
+    it('Returns only the calls the given user took part in', async () => {
+      const logs = await callLogService.getCallLogs({ userId: stu1.id });
+
+      expect(logs.length).toBeGreaterThan(0);
+      expect(logs.every((l) => l.callerId === stu1.id || l.calleeId === stu1.id)).toBe(true);
+    });
+
+    it("Keeps other people's calls out of the signed-in user's history", async () => {
+      vi.useRealTimers();
+      const [lecture] = await callLogService.getCallLogs({ kind: 'LECTURE' });
+      const lectureDay = format(new Date(lecture.startedAt), 'yyyy-MM-dd');
+
+      const { container } = render(
+        <Provider store={createTestStore(stu5)}>
+          <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+            <CallProvider>
+              <CallHistoryPage />
+            </CallProvider>
+          </MemoryRouter>
+        </Provider>
+      );
+      const [from, to] = Array.from(container.querySelectorAll<HTMLInputElement>('input[type="date"]'));
+      fireEvent.change(from, { target: { value: lectureDay } });
+      fireEvent.change(to, { target: { value: lectureDay } });
+
+      expect(await screen.findByText('No call logs found')).toBeInTheDocument();
+      expect(screen.queryByText(/Neha Kulkarni/)).not.toBeInTheDocument();
+    });
+
+    it('Includes calls made late on the last day of the chosen range', async () => {
+      vi.useRealTimers();
+      await callLogService.createCallLog({
+        callerId: facNeha.id,
+        calleeId: 'late-evening-callee',
+        kind: 'VOICE',
+        startedAt: new Date(2021, 2, 5, 22, 0).toISOString(),
+        outcome: 'COMPLETED',
+      });
+
+      const { container } = render(
+        <Provider store={createTestStore(facNeha)}>
+          <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+            <CallProvider>
+              <CallHistoryPage />
+            </CallProvider>
+          </MemoryRouter>
+        </Provider>
+      );
+      const [from, to] = Array.from(container.querySelectorAll<HTMLInputElement>('input[type="date"]'));
+      fireEvent.change(from, { target: { value: '2021-03-05' } });
+      fireEvent.change(to, { target: { value: '2021-03-05' } });
+
+      expect(await screen.findByText('late-evening-callee')).toBeInTheDocument();
+    });
+
+    it('Names the lecture room for a lecture the user hosted, which has no callee', async () => {
+      vi.useRealTimers();
+      const [lecture] = await callLogService.getCallLogs({ kind: 'LECTURE' });
+      const lectureDay = format(new Date(lecture.startedAt), 'yyyy-MM-dd');
+
+      const { container } = render(
+        <Provider store={createTestStore(facNeha)}>
+          <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+            <CallProvider>
+              <CallHistoryPage />
+            </CallProvider>
+          </MemoryRouter>
+        </Provider>
+      );
+      const [from, to] = Array.from(container.querySelectorAll<HTMLInputElement>('input[type="date"]'));
+      fireEvent.change(from, { target: { value: lectureDay } });
+      fireEvent.change(to, { target: { value: lectureDay } });
+
+      expect(await screen.findByText('To: room-ce-301')).toBeInTheDocument();
+      expect(screen.queryByText(/undefined/)).not.toBeInTheDocument();
     });
   });
 });

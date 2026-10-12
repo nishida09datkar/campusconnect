@@ -13,6 +13,10 @@ import { LectureStage } from '@/components/lecture/LectureStage';
 import { LectureControls } from '@/components/lecture/LectureControls';
 import { MeshTransport } from '@/components/lecture/transport';
 
+const stopTracks = (stream: MediaStream | null) => {
+  stream?.getTracks().forEach((t) => t.stop());
+};
+
 export const LectureRoomPage: React.FC = () => {
   const { roomId = 'lecture-101' } = useParams<{ roomId: string }>();
   const navigate = useNavigate();
@@ -28,31 +32,30 @@ export const LectureRoomPage: React.FC = () => {
   const [isCapExceeded, setIsCapExceeded] = useState(false);
 
   const transportRef = useRef<MeshTransport | null>(null);
+  const localStreamRef = useRef<MediaStream | null>(null);
+  const screenStreamRef = useRef<MediaStream | null>(null);
+  const joinedRef = useRef<{ roomId: string; userId: string } | null>(null);
 
   const userRole = currentUser?.role || 'STUDENT';
   const isFaculty = userRole === 'FACULTY' || userRole === 'HOD' || userRole === 'ADMIN';
 
-  // Cleanup helper
+  // Reads only refs, so its identity never changes. If it changed, the unmount effect below would re-run and end the session mid-lecture.
   const teardownSession = useCallback(() => {
-    if (localStream) {
-      localStream.getTracks().forEach((t) => {
-        try {
-          t.stop();
-        } catch {}
-      });
-      setLocalStream(null);
-    }
+    stopTracks(localStreamRef.current);
+    localStreamRef.current = null;
+    stopTracks(screenStreamRef.current);
+    screenStreamRef.current = null;
+    setLocalStream(null);
+    setIsSharingScreen(false);
     if (transportRef.current) {
       transportRef.current.destroy();
       transportRef.current = null;
     }
-    if (currentUser) {
-      socketClient.emit('lecture:leave', {
-        roomId,
-        userId: currentUser.id,
-      });
+    if (joinedRef.current) {
+      socketClient.emit('lecture:leave', joinedRef.current);
+      joinedRef.current = null;
     }
-  }, [localStream, currentUser, roomId]);
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -66,6 +69,7 @@ export const LectureRoomPage: React.FC = () => {
     isCameraOff: boolean;
     stream: MediaStream | null;
   }) => {
+    localStreamRef.current = settings.stream;
     setIsMuted(settings.isMuted);
     setIsCameraOff(settings.isCameraOff);
     setLocalStream(settings.stream);
@@ -77,12 +81,14 @@ export const LectureRoomPage: React.FC = () => {
     });
     transportRef.current = transport;
     await transport.init(roomId, currentUser?.id || 'guest');
+    if (transportRef.current !== transport) return;
     if (settings.stream) {
       await transport.publishLocalStream(settings.stream);
     }
 
     // Emit socket join
     if (currentUser) {
+      joinedRef.current = { roomId, userId: currentUser.id };
       socketClient.emit('lecture:join', {
         roomId,
         userId: currentUser.id,
@@ -101,16 +107,11 @@ export const LectureRoomPage: React.FC = () => {
         setParticipants(payload.participants);
         setIsCapExceeded(payload.participants.length > MeshTransport.MESH_CAP);
 
-        // Update local hand raised state from roster
+        // The roster's isMuted is only the join-time default (nothing reports unmutes back), so it must not
+        // re-mute here; forced muting arrives as a MUTE_ALL control event.
         const me = payload.participants.find((p) => p.userId === currentUser?.id);
         if (me) {
           setIsHandRaised(me.isHandRaised);
-          if (me.isMuted && !isMuted) {
-            setIsMuted(true);
-            if (localStream) {
-              localStream.getAudioTracks().forEach((t) => (t.enabled = false));
-            }
-          }
         }
       }
     };
@@ -119,15 +120,13 @@ export const LectureRoomPage: React.FC = () => {
       if (payload.roomId === roomId) {
         if (payload.action === 'END_LECTURE') {
           teardownSession();
-          navigate('/dashboard');
+          navigate('/', { replace: true });
         } else if (payload.action === 'REMOVE_PARTICIPANT' && payload.targetUserId === currentUser?.id) {
           teardownSession();
-          navigate('/dashboard');
+          navigate('/', { replace: true });
         } else if (payload.action === 'MUTE_ALL' && !isFaculty) {
           setIsMuted(true);
-          if (localStream) {
-            localStream.getAudioTracks().forEach((t) => (t.enabled = false));
-          }
+          localStreamRef.current?.getAudioTracks().forEach((t) => (t.enabled = false));
         }
       }
     };
@@ -139,7 +138,7 @@ export const LectureRoomPage: React.FC = () => {
       socketClient.off('lecture:participants', handleParticipantsUpdate);
       socketClient.off('lecture:control', handleControlAction);
     };
-  }, [inLobby, roomId, currentUser, isFaculty, isMuted, localStream, teardownSession, navigate]);
+  }, [inLobby, roomId, currentUser, isFaculty, teardownSession, navigate]);
 
   // Controls
   const handleToggleMute = () => {
@@ -160,18 +159,28 @@ export const LectureRoomPage: React.FC = () => {
     setIsCameraOff(!isCameraOff);
   };
 
+  const stopScreenShare = () => {
+    stopTracks(screenStreamRef.current);
+    screenStreamRef.current = null;
+    setIsSharingScreen(false);
+  };
+
   const handleToggleScreenShare = async () => {
     if (!isSharingScreen) {
       try {
         if (typeof navigator !== 'undefined' && navigator.mediaDevices?.getDisplayMedia) {
           const displayStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-          const track = displayStream.getVideoTracks()[0];
-          track.onended = () => setIsSharingScreen(false);
+          if (!transportRef.current) {
+            stopTracks(displayStream);
+            return;
+          }
+          screenStreamRef.current = displayStream;
+          displayStream.getVideoTracks()[0].onended = stopScreenShare;
           setIsSharingScreen(true);
         }
       } catch {}
     } else {
-      setIsSharingScreen(false);
+      stopScreenShare();
     }
   };
 
@@ -208,7 +217,7 @@ export const LectureRoomPage: React.FC = () => {
       action: 'END_LECTURE',
     });
     teardownSession();
-    navigate('/dashboard');
+    navigate('/', { replace: true });
   };
 
   const handleLeave = () => {

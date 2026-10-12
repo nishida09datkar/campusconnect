@@ -25,7 +25,9 @@ export const StudentDashboard: React.FC = () => {
   const classIds = studentClasses.map((c) => c.id);
 
   // Deadlines in enrolled classes
-  const assignments = db.assignments.filter((a) => classIds.includes(a.classId));
+  const assignments = db.assignments.filter(
+    (a) => classIds.includes(a.classId) && a.status !== 'DRAFT'
+  );
   const submissions = db.submissions.filter((s) => s.studentId === user?.id);
 
   // Graded submissions
@@ -35,7 +37,7 @@ export const StudentDashboard: React.FC = () => {
     <div className="space-y-6">
       <PageHeader
         title={`Hello, ${user?.name || 'Student'}`}
-        description={`Student portal & learning workspace &bull; Roll: ${user?.rollNo || 'CE301'} &bull; Year ${user?.year || 3} (Div ${user?.division || 'A'})`}
+        description={`Student portal & learning workspace • Roll: ${user?.rollNo || 'CE301'} • Year ${user?.year || 3} (Div ${user?.division || 'A'})`}
         actions={
           <div className="flex gap-2">
             <Link to="/student/classes">
@@ -157,7 +159,8 @@ export const StudentDashboard: React.FC = () => {
             ) : (
               assignments.map((assign) => {
                 const sub = submissions.find((s) => s.assignmentId === assign.id);
-                const isSubmitted = sub?.status === 'SUBMITTED' || sub?.status === 'GRADED';
+                const isSubmitted =
+                  sub?.status === 'SUBMITTED' || sub?.status === 'LATE' || sub?.status === 'GRADED';
                 return (
                   <div key={assign.id} className="p-3.5 rounded-xl border border-border bg-muted/20 flex items-center justify-between gap-3">
                     <div className="space-y-1">

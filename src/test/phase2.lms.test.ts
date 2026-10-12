@@ -310,6 +310,45 @@ describe('Phase 2 — Classroom LMS End-to-End Workflows', () => {
         submissionService.gradeSubmission(sub.id, { marks: -5, feedback: 'Negative' })
       ).rejects.toThrow(/greater than or equal to 0/i);
     });
+
+    it('Rejects a resubmission once the work has been graded, keeping the grade', async () => {
+      const assignment = await assignmentService.createAssignment(classId, {
+        title: 'Graded Lab',
+        instructions: 'Test',
+        dueAt: new Date(Date.now() + 86_400_000).toISOString(),
+        maxMarks: 20,
+      });
+      const file = { id: '1', name: 'f.txt', sizeKb: 1, mime: 'text/plain', url: '#' };
+
+      const sub = await submissionService.submitAssignment(assignment.id, studentId, { files: [file] });
+      await submissionService.gradeSubmission(sub.id, { marks: 18, feedback: 'Well done' });
+
+      await expect(
+        submissionService.submitAssignment(assignment.id, studentId, { files: [file] })
+      ).rejects.toThrow(/already been graded/i);
+
+      const after = await submissionService.getStudentSubmission(assignment.id, studentId);
+      expect(after?.status).toBe('GRADED');
+      expect(after?.marks).toBe(18);
+    });
+
+    it('Rejects a submission to an assignment that is still a draft', async () => {
+      const draft = await assignmentService.createAssignment(classId, {
+        title: 'Unpublished Lab',
+        instructions: 'Test',
+        dueAt: new Date(Date.now() + 86_400_000).toISOString(),
+        maxMarks: 20,
+        status: 'DRAFT',
+      });
+
+      await expect(
+        submissionService.submitAssignment(draft.id, studentId, {
+          files: [{ id: '1', name: 'f.txt', sizeKb: 1, mime: 'text/plain', url: '#' }],
+        })
+      ).rejects.toThrow(/not open for submissions/i);
+
+      expect(await submissionService.getStudentSubmission(draft.id, studentId)).toBeNull();
+    });
   });
 
   describe('6. People Rosters', () => {

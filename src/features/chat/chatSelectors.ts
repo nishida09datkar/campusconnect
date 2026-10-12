@@ -57,10 +57,13 @@ export const selectTotalUnreadCount = createSelector(
     conversations.reduce((sum, conv) => sum + (conv.unreadCount || 0), 0)
 );
 
-export const selectChatLoading = (state: RootState) => ({
-  conversations: state.chat.loadingConversations,
-  messages: state.chat.loadingMessages,
-});
+export const selectChatLoading = createSelector(
+  [
+    (state: RootState) => state.chat.loadingConversations,
+    (state: RootState) => state.chat.loadingMessages,
+  ],
+  (conversations, messages) => ({ conversations, messages })
+);
 
 export const selectChatError = (state: RootState) => state.chat.error;
 

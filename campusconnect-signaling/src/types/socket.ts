@@ -35,6 +35,7 @@ export interface ChatSendPayload {
   body: string;
   attachments?: Attachment[];
   tempId: string;
+  recipientIds?: string[];
 }
 
 export interface ChatAckPayload {
@@ -46,11 +47,13 @@ export interface ChatTypingPayload {
   conversationId: string;
   userId: string;
   isTyping: boolean;
+  recipientIds?: string[];
 }
 
 export interface ChatReadPayload {
   conversationId: string;
   userId: string;
+  recipientIds?: string[];
 }
 
 export type CallKind = 'VOICE' | 'VIDEO' | 'LECTURE';

@@ -142,14 +142,17 @@ export const NoticesPage: React.FC = () => {
       return;
     }
 
+    // The year and class filters are only offered (and only apply) for a students-only notice
+    const studentsOnly = audience === 'STUDENTS';
+
     setIsSubmitting(true);
     try {
       await noticeService.createNotice({
         senderId: currentUser?.id || 'user-hod-ce',
         departmentId: deptId,
         audience,
-        year: targetYear !== 'ALL' ? Number(targetYear) : undefined,
-        classId: targetClassId !== 'ALL' ? targetClassId : undefined,
+        year: studentsOnly && targetYear !== 'ALL' ? Number(targetYear) : undefined,
+        classId: studentsOnly && targetClassId !== 'ALL' ? targetClassId : undefined,
         title: title.trim(),
         body: body.trim(),
         attachments,

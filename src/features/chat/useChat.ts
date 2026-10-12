@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { selectCurrentUser } from '@/features/auth/authSelectors';
 import {
@@ -37,6 +37,13 @@ export function useChat() {
 
   const { emitSend, emitTyping, emitRead } = useSocket();
 
+  // Realtime events are addressed to the other members; the signaling server delivers to nobody else.
+  const recipientIdsRef = useRef<string[]>([]);
+  recipientIdsRef.current =
+    activeConversation && currentUser
+      ? activeConversation.memberIds.filter((id) => id !== currentUser.id)
+      : [];
+
   // Load conversations on mount
   useEffect(() => {
     if (currentUser?.id) {
@@ -50,7 +57,7 @@ export function useChat() {
       dispatch(fetchConversationMessages({ conversationId: activeConversation.id, page: 1 }));
       if (currentUser?.id) {
         dispatch(markConversationAsRead({ conversationId: activeConversation.id, userId: currentUser.id }));
-        emitRead(activeConversation.id, currentUser.id);
+        emitRead(activeConversation.id, currentUser.id, recipientIdsRef.current);
       }
     }
   }, [activeConversation?.id, currentUser?.id, dispatch, emitRead]);
@@ -60,7 +67,7 @@ export function useChat() {
     dispatch(messageReceived(message));
     if (currentUser && message.conversationId === activeConversation?.id && message.senderId !== currentUser.id) {
       dispatch(markConversationAsRead({ conversationId: message.conversationId, userId: currentUser.id }));
-      emitRead(message.conversationId, currentUser.id);
+      emitRead(message.conversationId, currentUser.id, recipientIdsRef.current);
     }
   }, [dispatch, currentUser, activeConversation?.id, emitRead]));
 
@@ -95,7 +102,7 @@ export function useChat() {
 
     // 2. Emit through socket
     try {
-      emitSend(payload);
+      emitSend({ ...payload, recipientIds: recipientIdsRef.current });
     } catch {
       dispatch(messageSendFailed({ tempId }));
     }
@@ -112,7 +119,7 @@ export function useChat() {
       tempId,
     };
     try {
-      emitSend(payload);
+      emitSend({ ...payload, recipientIds: recipientIdsRef.current });
     } catch {
       dispatch(messageSendFailed({ tempId }));
     }
@@ -120,7 +127,7 @@ export function useChat() {
 
   const setTyping = useCallback((isTyping: boolean) => {
     if (!activeConversation || !currentUser) return;
-    emitTyping(activeConversation.id, currentUser.id, isTyping);
+    emitTyping(activeConversation.id, currentUser.id, isTyping, recipientIdsRef.current);
   }, [activeConversation, currentUser, emitTyping]);
 
   const selectConversation = useCallback((id: string | null) => {

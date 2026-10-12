@@ -131,6 +131,7 @@ export const MobileDrawer: React.FC = () => {
               <NavLink
                 key={item.to}
                 to={item.to}
+                end={navItems.some((other) => other.to.startsWith(`${item.to}/`))}
                 onClick={handleClose}
                 className={({ isActive }) =>
                   clsx(

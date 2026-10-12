@@ -143,6 +143,7 @@ export const Sidebar: React.FC = () => {
             <NavLink
               key={item.to}
               to={item.to}
+              end={navItems.some((other) => other.to.startsWith(`${item.to}/`))}
               className={({ isActive }) =>
                 clsx(
                   'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all group relative',

@@ -6,6 +6,7 @@ import { allocationService } from '@/api/services/allocation.service';
 import { noticeService } from '@/api/services/notice.service';
 import { notificationService } from '@/api/services/notification.service';
 import { calendarService } from '@/api/services/calendar.service';
+import { assignmentService } from '@/api/services/assignment.service';
 import { sanitizeHtml } from '@/utils/sanitize';
 import { canInteract, hasRole } from '@/utils/permissions';
 import { User } from '@/types';
@@ -405,6 +406,25 @@ describe('Phase 3 — Department Layer & Notifications Specification Tests', () 
       expect(events.some((e) => e.type === 'MEETING')).toBe(true);
       expect(events.some((e) => e.type === 'ASSIGNMENT')).toBe(true);
       expect(events.some((e) => e.type === 'QUIZ')).toBe(true);
+    });
+
+    it('Keeps the deadline of an unpublished draft off a student calendar', async () => {
+      await assignmentService.createAssignment('class-1', {
+        title: 'Secret Draft Lab',
+        instructions: 'Not published yet',
+        dueAt: '2026-10-20T10:00:00Z',
+        maxMarks: 20,
+        status: 'DRAFT',
+      });
+
+      const events = await calendarService.getEvents({
+        userId: 'user-stu-1',
+        role: 'STUDENT',
+        departmentId: 'dept-ce',
+      });
+
+      expect(events.some((e) => e.type === 'ASSIGNMENT')).toBe(true);
+      expect(events.some((e) => e.title.includes('Secret Draft Lab'))).toBe(false);
     });
 
     it('Scheduling a meeting creates event and notifies all participants', async () => {

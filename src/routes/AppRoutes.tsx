@@ -1,7 +1,7 @@
 import React, { Suspense, lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAppSelector } from '@/store/hooks';
-import { selectCurrentUser } from '@/features/auth/authSelectors';
+import { selectCurrentUser, selectAuthStatus } from '@/features/auth/authSelectors';
 import { getRoleHomeRoute } from './roleRoutes';
 import { ProtectedRoute } from './ProtectedRoute';
 import { AppShell } from '@/components/layout/AppShell';
@@ -69,6 +69,8 @@ const NotFoundPage = lazy(() => import('@/pages/shared/NotFoundPage'));
 // Root redirector based on auth state
 const RootRedirector: React.FC = () => {
   const user = useAppSelector(selectCurrentUser);
+  const status = useAppSelector(selectAuthStatus);
+  if (status === 'loading' && !user) return <PageSuspenseFallback />;
   if (!user) return <Navigate to="/login" replace />;
   return <Navigate to={getRoleHomeRoute(user.role)} replace />;
 };
