@@ -43,30 +43,34 @@ public class DataSeeder implements CommandLineRunner {
     @Transactional
     public void run(String... args) {
         String encodedPassword = passwordEncoder.encode("password123");
+        String adminPassword = passwordEncoder.encode("Admin@123");
+        String hodPassword = passwordEncoder.encode("Hod@123");
+        String facPassword = passwordEncoder.encode("Fac@123");
+        String stuPassword = passwordEncoder.encode("Stu@123");
 
         // 1. Seed Demo Users matching src/api/mock/db.ts
         List<User> demoUsers = List.of(
-                new User("user-admin", "admin@campus.test", encodedPassword, "Aarav Mehta", Role.ADMIN, "dept-admin"),
-                new User("user-admin-2", "admin@campusconnect.edu", encodedPassword, "Campus Admin", Role.ADMIN, "dept-admin"),
-                new User("user-hod-ce", "hod.ce@campus.test", encodedPassword, "Dr. Kavita Rao", Role.HOD, "dept-ce"),
-                new User("user-hod-it", "hod.it@campus.test", encodedPassword, "Dr. Sameer Joshi", Role.HOD, "dept-it"),
-                new User("user-fac-neha", "neha@campus.test", encodedPassword, "Prof. Neha Kulkarni", Role.FACULTY, "dept-ce"),
-                new User("user-fac-rohan", "rohan@campus.test", encodedPassword, "Prof. Rohan Desai", Role.FACULTY, "dept-ce"),
-                new User("user-fac-anita", "anita@campus.test", encodedPassword, "Prof. Anita Patil", Role.FACULTY, "dept-ce"),
-                new User("user-fac-vivek", "vivek@campus.test", encodedPassword, "Prof. Vivek Shah", Role.FACULTY, "dept-it"),
-                new User("user-fac-sara", "sara@campus.test", encodedPassword, "Prof. Sara Khan", Role.FACULTY, "dept-it"),
-                student("user-stu-1", "student1@campus.test", encodedPassword, "Aarav Sharma", "dept-ce", 3),
-                student("user-stu-2", "student2@campus.test", encodedPassword, "Diya Patel", "dept-ce", 3),
-                student("user-stu-3", "student3@campus.test", encodedPassword, "Ananya Verma", "dept-ce", 3),
-                student("user-stu-4", "student4@campus.test", encodedPassword, "Ishaan Singh", "dept-ce", 3),
-                student("user-stu-5", "student5@campus.test", encodedPassword, "Rohan Gupta", "dept-ce", 3),
-                student("user-stu-6", "student6@campus.test", encodedPassword, "Sneha Nair", "dept-ce", 3),
-                student("user-stu-7", "student7@campus.test", encodedPassword, "Siddharth Joshi", "dept-ce", 3),
-                student("user-stu-8", "student8@campus.test", encodedPassword, "Tanvi Deshmukh", "dept-ce", 3),
-                student("user-stu-9", "student9@campus.test", encodedPassword, "Kabir Mehta", "dept-it", 2),
-                student("user-stu-10", "student10@campus.test", encodedPassword, "Pooja Reddy", "dept-it", 2),
-                student("user-stu-11", "student11@campus.test", encodedPassword, "Aditya Kulkarni", "dept-it", 2),
-                student("user-stu-12", "student12@campus.test", encodedPassword, "Riya Sen", "dept-it", 2)
+                new User("user-admin", "admin@campus.test", adminPassword, "Aarav Mehta", Role.ADMIN, "dept-admin"),
+                new User("user-admin-2", "admin@campusconnect.edu", adminPassword, "Campus Admin", Role.ADMIN, "dept-admin"),
+                new User("user-hod-ce", "hod.ce@campus.test", hodPassword, "Dr. Kavita Rao", Role.HOD, "dept-ce"),
+                new User("user-hod-it", "hod.it@campus.test", hodPassword, "Dr. Sameer Joshi", Role.HOD, "dept-it"),
+                new User("user-fac-neha", "neha@campus.test", facPassword, "Prof. Neha Kulkarni", Role.FACULTY, "dept-ce"),
+                new User("user-fac-rohan", "rohan@campus.test", facPassword, "Prof. Rohan Desai", Role.FACULTY, "dept-ce"),
+                new User("user-fac-anita", "anita@campus.test", facPassword, "Prof. Anita Patil", Role.FACULTY, "dept-ce"),
+                new User("user-fac-vivek", "vivek@campus.test", facPassword, "Prof. Vivek Shah", Role.FACULTY, "dept-it"),
+                new User("user-fac-sara", "sara@campus.test", facPassword, "Prof. Sara Khan", Role.FACULTY, "dept-it"),
+                student("user-stu-1", "student1@campus.test", stuPassword, "Aarav Sharma", "dept-ce", 3),
+                student("user-stu-2", "student2@campus.test", stuPassword, "Diya Patel", "dept-ce", 3),
+                student("user-stu-3", "student3@campus.test", stuPassword, "Ananya Verma", "dept-ce", 3),
+                student("user-stu-4", "student4@campus.test", stuPassword, "Ishaan Singh", "dept-ce", 3),
+                student("user-stu-5", "student5@campus.test", stuPassword, "Rohan Gupta", "dept-ce", 3),
+                student("user-stu-6", "student6@campus.test", stuPassword, "Sneha Nair", "dept-ce", 3),
+                student("user-stu-7", "student7@campus.test", stuPassword, "Siddharth Joshi", "dept-ce", 3),
+                student("user-stu-8", "student8@campus.test", stuPassword, "Tanvi Deshmukh", "dept-ce", 3),
+                student("user-stu-9", "student9@campus.test", stuPassword, "Kabir Mehta", "dept-it", 2),
+                student("user-stu-10", "student10@campus.test", stuPassword, "Pooja Reddy", "dept-it", 2),
+                student("user-stu-11", "student11@campus.test", stuPassword, "Aditya Kulkarni", "dept-it", 2),
+                student("user-stu-12", "student12@campus.test", stuPassword, "Riya Sen", "dept-it", 2)
         );
 
         for (User u : demoUsers) {
@@ -75,6 +79,12 @@ public class DataSeeder implements CommandLineRunner {
                     userRepository.delete(existing);
                     userRepository.flush();
                     userRepository.save(u);
+                } else {
+                    existing.setPassword(u.getPassword());
+                    existing.setName(u.getName());
+                    existing.setRole(u.getRole());
+                    existing.setDepartmentId(u.getDepartmentId());
+                    userRepository.save(existing);
                 }
             }, () -> {
                 if (!userRepository.existsById(u.getId())) {
