@@ -65,12 +65,31 @@ const NotificationsPage = lazy(() => import('@/pages/shared/NotificationsPage'))
 const ProfilePage = lazy(() => import('@/pages/shared/ProfilePage'));
 const ForbiddenPage = lazy(() => import('@/pages/shared/ForbiddenPage'));
 const NotFoundPage = lazy(() => import('@/pages/shared/NotFoundPage'));
+const SplashPage = lazy(() => import('@/pages/SplashPage'));
 
-// Root redirector based on auth state
+// Root redirector based on auth state and splash display history
 const RootRedirector: React.FC = () => {
   const user = useAppSelector(selectCurrentUser);
-  if (!user) return <Navigate to="/login" replace />;
-  return <Navigate to={getRoleHomeRoute(user.role)} replace />;
+
+  // Authenticated users bypass splash entirely and go straight to their dashboard
+  if (user) {
+    return <Navigate to={getRoleHomeRoute(user.role)} replace />;
+  }
+
+  // Check if splash has already played during this browser session or if reduced motion is set
+  const isSplashShown =
+    typeof window !== 'undefined' &&
+    sessionStorage.getItem('campusconnect_splash_shown') === 'true';
+
+  const prefersReducedMotion =
+    typeof window !== 'undefined' &&
+    window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
+  if (isSplashShown || prefersReducedMotion) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <SplashPage />;
 };
 
 export const AppRoutes: React.FC = () => {
