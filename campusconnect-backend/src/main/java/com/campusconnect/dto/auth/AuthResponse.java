@@ -15,6 +15,16 @@ public class AuthResponse {
 
     public AuthResponse() {}
 
+    public AuthResponse(String token, String userId, String email, String name, Role role, String departmentId) {
+        this.token = token;
+        this.accessToken = token;
+        this.userId = userId;
+        this.email = email;
+        this.name = name;
+        this.role = role;
+        this.departmentId = departmentId;
+    }
+
     public AuthResponse(String token, String userId, String email, String name, Role role, String departmentId, User user) {
         this.token = token;
         this.accessToken = token;
