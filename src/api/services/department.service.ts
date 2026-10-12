@@ -1,14 +1,26 @@
+import { apiClient } from '../axios';
+import { USE_MOCKS } from '../config';
 import { db } from '../mock/db';
 import { delay } from '../mock/delay';
 import { Department, DepartmentWithDetails } from '@/types';
 
 export const departmentService = {
   async getAllDepartments(): Promise<Department[]> {
+    if (!USE_MOCKS) {
+      const res = await apiClient.get<Department[]>('/api/departments');
+      return res.data;
+    }
+
     await delay(60, 140);
     return [...db.departments];
   },
 
   async getDepartmentsWithDetails(): Promise<DepartmentWithDetails[]> {
+    if (!USE_MOCKS) {
+      const res = await apiClient.get<DepartmentWithDetails[]>('/api/departments');
+      return res.data;
+    }
+
     await delay(80, 160);
     return db.departments.map((dept) => {
       const hod = db.users.find((u) => u.id === dept.hodId);
@@ -32,12 +44,27 @@ export const departmentService = {
   },
 
   async getDepartmentById(id: string): Promise<Department | null> {
+    if (!USE_MOCKS) {
+      try {
+        const res = await apiClient.get<Department>(`/api/departments/${id}`);
+        return res.data;
+      } catch (err: any) {
+        if (err.status === 404) return null;
+        throw err;
+      }
+    }
+
     await delay(50, 100);
     const dept = db.departments.find((d) => d.id === id);
     return dept ? { ...dept } : null;
   },
 
   async createDepartment(data: { name: string; code: string; hodId: string }): Promise<Department> {
+    if (!USE_MOCKS) {
+      const res = await apiClient.post<Department>('/api/departments', data);
+      return res.data;
+    }
+
     await delay(120, 250);
     const code = data.code.trim().toUpperCase();
     const existing = db.departments.find(
@@ -74,6 +101,11 @@ export const departmentService = {
     id: string,
     data: Partial<Pick<Department, 'name' | 'code' | 'hodId'>>
   ): Promise<Department> {
+    if (!USE_MOCKS) {
+      const res = await apiClient.put<Department>(`/api/departments/${id}`, data);
+      return res.data;
+    }
+
     await delay(120, 220);
     const index = db.departments.findIndex((d) => d.id === id);
     if (index === -1) {
@@ -107,6 +139,11 @@ export const departmentService = {
   },
 
   async deleteDepartment(id: string): Promise<{ success: boolean; message?: string }> {
+    if (!USE_MOCKS) {
+      const res = await apiClient.delete<{ success: boolean; message?: string }>(`/api/departments/${id}`);
+      return res.data;
+    }
+
     await delay(120, 220);
     const index = db.departments.findIndex((d) => d.id === id);
     if (index === -1) {

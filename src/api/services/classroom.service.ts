@@ -1,3 +1,5 @@
+import { apiClient } from '../axios';
+import { USE_MOCKS } from '../config';
 import { db } from '../mock/db';
 import { delay } from '../mock/delay';
 import { ClassRoom, Course, User, StreamPost, Reply, Attachment } from '@/types';
@@ -10,6 +12,13 @@ export interface EnrichedClassRoom extends ClassRoom {
 
 export const classroomService = {
   async getFacultyClasses(facultyId: string): Promise<EnrichedClassRoom[]> {
+    if (!USE_MOCKS) {
+      const res = await apiClient.get<EnrichedClassRoom[]>('/api/classes', {
+        params: { facultyId },
+      });
+      return res.data;
+    }
+
     await delay(120, 240);
     const classes = db.classes.filter((c) => c.facultyId === facultyId);
     return classes.map((c) => {
@@ -25,6 +34,13 @@ export const classroomService = {
   },
 
   async getStudentClasses(studentId: string): Promise<EnrichedClassRoom[]> {
+    if (!USE_MOCKS) {
+      const res = await apiClient.get<EnrichedClassRoom[]>('/api/classes', {
+        params: { studentId },
+      });
+      return res.data;
+    }
+
     await delay(120, 240);
     const classes = db.classes.filter((c) => c.studentIds.includes(studentId));
     return classes.map((c) => {
@@ -40,6 +56,16 @@ export const classroomService = {
   },
 
   async getClassById(classId: string): Promise<EnrichedClassRoom | null> {
+    if (!USE_MOCKS) {
+      try {
+        const res = await apiClient.get<EnrichedClassRoom>(`/api/classes/${classId}`);
+        return res.data;
+      } catch (err: any) {
+        if (err.status === 404) return null;
+        throw err;
+      }
+    }
+
     await delay(100, 200);
     const c = db.classes.find((item) => item.id === classId);
     if (!c) return null;
@@ -54,6 +80,17 @@ export const classroomService = {
   },
 
   async getClassMembers(classId: string): Promise<{ faculty: User | null; students: User[] }> {
+    if (!USE_MOCKS) {
+      try {
+        const res = await apiClient.get<{ faculty: User | null; students: User[] }>(
+          `/api/classes/${classId}/members`
+        );
+        return res.data;
+      } catch (err: any) {
+        return { faculty: null, students: [] };
+      }
+    }
+
     await delay(100, 200);
     const c = db.classes.find((item) => item.id === classId);
     if (!c) return { faculty: null, students: [] };
@@ -63,6 +100,13 @@ export const classroomService = {
   },
 
   async joinClassByCode(classCode: string, studentId: string): Promise<EnrichedClassRoom> {
+    if (!USE_MOCKS) {
+      const res = await apiClient.post<EnrichedClassRoom>('/api/classes/join', {
+        classCode,
+      });
+      return res.data;
+    }
+
     await delay(200, 350);
     const trimmed = classCode.trim();
     if (!trimmed) {
@@ -100,6 +144,11 @@ export const classroomService = {
     facultyId: string,
     data: { courseId: string; title: string; section: string; coverColor?: string }
   ): Promise<EnrichedClassRoom> {
+    if (!USE_MOCKS) {
+      const res = await apiClient.post<EnrichedClassRoom>('/api/classes', data);
+      return res.data;
+    }
+
     await delay(250, 400);
     const trimmedTitle = data.title.trim();
     const trimmedSection = data.section.trim();
@@ -221,13 +270,22 @@ export const classroomService = {
   },
 
   async getAllCourses(): Promise<Course[]> {
+    if (!USE_MOCKS) {
+      const res = await apiClient.get<Course[]>('/api/courses');
+      return res.data;
+    }
+
     await delay(80, 150);
     return [...db.courses];
   },
 
   async getAllClasses(): Promise<ClassRoom[]> {
+    if (!USE_MOCKS) {
+      const res = await apiClient.get<ClassRoom[]>('/api/classes');
+      return res.data;
+    }
+
     await delay(80, 150);
     return [...db.classes];
   },
 };
-

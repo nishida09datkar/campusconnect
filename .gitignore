@@ -13,3 +13,4 @@ target/
 campusconnect-backend/target/
 *.class
 .vscode/
+*.log

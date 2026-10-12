@@ -1,14 +1,28 @@
+import { apiClient } from '../axios';
+import { USE_MOCKS } from '../config';
 import { db } from '../mock/db';
 import { delay } from '../mock/delay';
 import { FacultyAllocation, FacultyAllocationWithDetails } from '@/types';
 
 export const allocationService = {
   async getAllocations(): Promise<FacultyAllocationWithDetails[]> {
+    if (!USE_MOCKS) {
+      const res = await apiClient.get<FacultyAllocationWithDetails[]>('/api/allocations');
+      return res.data;
+    }
+
     await delay(70, 150);
     return db.allocations.map((alloc) => enrichAllocation(alloc));
   },
 
   async getAllocationsByDepartment(departmentId: string): Promise<FacultyAllocationWithDetails[]> {
+    if (!USE_MOCKS) {
+      const res = await apiClient.get<FacultyAllocationWithDetails[]>('/api/allocations', {
+        params: { departmentId },
+      });
+      return res.data;
+    }
+
     await delay(80, 160);
     // Find all courses belonging to this department
     const deptCourseIds = new Set(
@@ -25,6 +39,14 @@ export const allocationService = {
     courseId: string,
     hodDepartmentId?: string
   ): Promise<FacultyAllocationWithDetails> {
+    if (!USE_MOCKS) {
+      const res = await apiClient.post<FacultyAllocationWithDetails>('/api/allocations', {
+        facultyId,
+        courseId,
+      });
+      return res.data;
+    }
+
     await delay(120, 240);
 
     const faculty = db.users.find((u) => u.id === facultyId);
@@ -70,6 +92,11 @@ export const allocationService = {
   },
 
   async deleteAllocation(allocationId: string): Promise<{ success: boolean }> {
+    if (!USE_MOCKS) {
+      const res = await apiClient.delete<{ success: boolean }>(`/api/allocations/${allocationId}`);
+      return res.data;
+    }
+
     await delay(100, 200);
     const index = db.allocations.findIndex((a) => a.id === allocationId);
     if (index === -1) {

@@ -1,3 +1,5 @@
+import { apiClient } from '../axios';
+import { USE_MOCKS } from '../config';
 import { db } from '../mock/db';
 import { delay } from '../mock/delay';
 import { User, Role, PaginatedResponse } from '@/types';
@@ -12,6 +14,36 @@ export interface UserFilterParams {
 
 export const userService = {
   async getUsers(params: UserFilterParams = {}): Promise<PaginatedResponse<User>> {
+    if (!USE_MOCKS) {
+      const res = await apiClient.get<User[]>('/api/users', {
+        params: {
+          role: params.role,
+          departmentId: params.departmentId,
+        },
+      });
+      let users = res.data;
+      if (params.q && params.q.trim()) {
+        const search = params.q.trim().toLowerCase();
+        users = users.filter(
+          (u) =>
+            u.name?.toLowerCase().includes(search) ||
+            u.email?.toLowerCase().includes(search)
+        );
+      }
+      const page = params.page || 1;
+      const pageSize = params.pageSize || 20;
+      const total = users.length;
+      const startIndex = (page - 1) * pageSize;
+      const paginatedItems = users.slice(startIndex, startIndex + pageSize);
+
+      return {
+        items: paginatedItems,
+        total,
+        page,
+        pageSize,
+      };
+    }
+
     await delay(70, 150);
     const { role, departmentId, q, page = 1, pageSize = 20 } = params;
 
@@ -50,6 +82,16 @@ export const userService = {
   },
 
   async getUserById(id: string): Promise<User | null> {
+    if (!USE_MOCKS) {
+      try {
+        const res = await apiClient.get<User>(`/api/users/${id}`);
+        return res.data;
+      } catch (err: any) {
+        if (err.status === 404) return null;
+        throw err;
+      }
+    }
+
     await delay(40, 90);
     const user = db.users.find((u) => u.id === id);
     return user ? { ...user } : null;
@@ -123,6 +165,13 @@ export const userService = {
   },
 
   async getDepartmentFaculty(departmentId: string): Promise<User[]> {
+    if (!USE_MOCKS) {
+      const res = await apiClient.get<User[]>('/api/users', {
+        params: { role: 'FACULTY', departmentId },
+      });
+      return res.data;
+    }
+
     await delay(50, 110);
     return db.users
       .filter((u) => u.departmentId === departmentId && u.role === 'FACULTY')
@@ -130,6 +179,13 @@ export const userService = {
   },
 
   async getDepartmentStudents(departmentId: string): Promise<User[]> {
+    if (!USE_MOCKS) {
+      const res = await apiClient.get<User[]>('/api/users', {
+        params: { role: 'STUDENT', departmentId },
+      });
+      return res.data;
+    }
+
     await delay(50, 110);
     return db.users
       .filter((u) => u.departmentId === departmentId && u.role === 'STUDENT')
@@ -137,6 +193,11 @@ export const userService = {
   },
 
   async getPotentialHods(): Promise<User[]> {
+    if (!USE_MOCKS) {
+      const res = await apiClient.get<User[]>('/api/users');
+      return res.data.filter((u) => u.role === 'HOD' || u.role === 'FACULTY');
+    }
+
     await delay(40, 90);
     return db.users
       .filter((u) => u.role === 'HOD' || u.role === 'FACULTY')
