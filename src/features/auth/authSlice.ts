@@ -24,6 +24,18 @@ export const loginUser = createAsyncThunk<AuthResponse, LoginRequest, { rejectVa
   }
 );
 
+export const registerUser = createAsyncThunk<AuthResponse, Parameters<typeof authService.register>[0], { rejectValue: ApiError }>(
+  'auth/registerUser',
+  async (formData, { rejectWithValue }) => {
+    try {
+      const response = await authService.register(formData);
+      return response;
+    } catch (err) {
+      return rejectWithValue(err as ApiError);
+    }
+  }
+);
+
 export const loginWithGoogle = createAsyncThunk<AuthResponse, string, { rejectValue: ApiError }>(
   'auth/loginWithGoogle',
   async (idToken, { rejectWithValue }) => {
@@ -82,6 +94,21 @@ export const authSlice = createSlice({
       .addCase(loginUser.rejected, (state, action) => {
         state.status = 'failed';
         state.error = action.payload?.message || 'Login failed';
+      })
+      // Register
+      .addCase(registerUser.pending, (state) => {
+        state.status = 'loading';
+        state.error = null;
+      })
+      .addCase(registerUser.fulfilled, (state, action) => {
+        state.status = 'authenticated';
+        state.user = action.payload.user;
+        state.accessToken = action.payload.accessToken;
+        state.error = null;
+      })
+      .addCase(registerUser.rejected, (state, action) => {
+        state.status = 'failed';
+        state.error = action.payload?.message || 'Registration failed';
       })
       // Google Login
       .addCase(loginWithGoogle.pending, (state) => {

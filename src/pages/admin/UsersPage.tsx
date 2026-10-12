@@ -26,6 +26,10 @@ import {
   ChevronLeft,
   ChevronRight,
   Upload,
+  Key,
+  Copy,
+  Check,
+  Sparkles,
 } from 'lucide-react';
 
 export const UsersPage: React.FC = () => {
@@ -60,6 +64,15 @@ export const UsersPage: React.FC = () => {
   const [formPassword, setFormPassword] = useState('');
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Created Credentials Display Modal
+  const [createdCredentials, setCreatedCredentials] = useState<{
+    name: string;
+    email: string;
+    role: Role;
+    password: string;
+  } | null>(null);
+  const [copiedPassword, setCopiedPassword] = useState(false);
 
   // Bulk CSV Modal
   const [isCsvModalOpen, setIsCsvModalOpen] = useState(false);
@@ -113,6 +126,7 @@ export const UsersPage: React.FC = () => {
     setEditingUser(null);
     setFormName('');
     setFormEmail('');
+    setFormPassword('');
     setFormRole('STUDENT');
     setFormDeptId(departments[0]?.id || '');
     setFormRollNo('');
@@ -129,6 +143,7 @@ export const UsersPage: React.FC = () => {
     setEditingUser(user);
     setFormName(user.name);
     setFormEmail(user.email);
+    setFormPassword('');
     setFormRole(user.role);
     setFormDeptId(user.departmentId || '');
     setFormRollNo(user.rollNo || '');
@@ -196,22 +211,19 @@ export const UsersPage: React.FC = () => {
           division: formRole === 'STUDENT' ? formDivision : undefined,
           employeeId: formRole !== 'STUDENT' ? formEmpId.trim() : undefined,
           designation: formRole !== 'STUDENT' ? formDesignation.trim() : undefined,
+          password: formPassword.trim() || undefined,
         });
         dispatch(
           addToast({
             type: 'success',
-            message: `User '${formName.trim()}' updated successfully.${formPassword.trim() ? ' Password updated in MySQL.' : ''}`,
+            message: `User '${formName.trim()}' updated successfully in MySQL database.`,
           })
         );
       } else {
-        const defaultPass = formRole === 'STUDENT' ? 'Stu@123' : formRole === 'FACULTY' ? 'Fac@123' : formRole === 'HOD' ? 'Hod@123' : 'Admin@123';
-        const assignedPass = formPassword.trim() || defaultPass;
-
-        await userService.createUser({
+        const created = await userService.createUser({
           name: formName.trim(),
           email: formEmail.trim().toLowerCase(),
           role: formRole,
-          password: formPassword.trim() || undefined,
           departmentId: formDeptId || undefined,
           isActive: true,
           rollNo: formRole === 'STUDENT' ? formRollNo.trim() : undefined,
@@ -219,13 +231,22 @@ export const UsersPage: React.FC = () => {
           division: formRole === 'STUDENT' ? formDivision : undefined,
           employeeId: formRole !== 'STUDENT' ? formEmpId.trim() : undefined,
           designation: formRole !== 'STUDENT' ? formDesignation.trim() : undefined,
+          password: formPassword.trim() || undefined,
         });
         dispatch(
           addToast({
             type: 'success',
-            message: `User '${formName.trim()}' enrolled in MySQL! Login password: ${assignedPass}`,
+            message: `User '${formName.trim()}' created successfully in MySQL database!`,
           })
         );
+        // Display credentials modal to administrator
+        setCopiedPassword(false);
+        setCreatedCredentials({
+          name: created.name,
+          email: created.email,
+          role: created.role,
+          password: (created as any).temporaryPassword || formPassword.trim() || 'Stu@123',
+        });
       }
       setIsModalOpen(false);
       await loadUsers();
@@ -643,6 +664,46 @@ export const UsersPage: React.FC = () => {
             </div>
           )}
 
+          {/* Password Field & Auto-Generation */}
+          <div className="space-y-1.5 p-3 rounded-xl bg-card border border-border">
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-semibold text-foreground">
+                {editingUser ? 'New Password (Optional)' : 'Account Password *'}
+              </label>
+              <button
+                type="button"
+                onClick={() => {
+                  const prefix =
+                    formRole === 'ADMIN'
+                      ? 'Admin@'
+                      : formRole === 'HOD'
+                      ? 'Hod@'
+                      : formRole === 'FACULTY'
+                      ? 'Fac@'
+                      : 'Stu@';
+                  const randomNum = Math.floor(1000 + Math.random() * 9000);
+                  setFormPassword(`${prefix}${randomNum}`);
+                }}
+                className="text-[11px] text-primary-600 dark:text-primary-400 hover:underline flex items-center gap-1 font-semibold"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                Generate Random
+              </button>
+            </div>
+            <Input
+              type="text"
+              placeholder={editingUser ? 'Leave blank to keep existing password' : 'e.g. Stu@5821 or leave blank for auto-generation'}
+              value={formPassword}
+              onChange={(e) => setFormPassword(e.target.value)}
+              leftIcon={<Key className="w-4 h-4 text-muted-foreground" />}
+            />
+            <p className="text-[11px] text-muted-foreground">
+              {editingUser
+                ? 'Only fill this if you want to change the user\'s password in MySQL.'
+                : 'If left empty, a secure password will be randomly generated and displayed to you.'}
+            </p>
+          </div>
+
           <div className="flex justify-end gap-2 pt-3 border-t border-border">
             <Button
               type="button"
@@ -653,10 +714,73 @@ export const UsersPage: React.FC = () => {
               Cancel
             </Button>
             <Button type="submit" isLoading={isSubmitting}>
-              {editingUser ? 'Save Profile' : 'Create User'}
+              {editingUser ? 'Save Profile' : 'Create User in MySQL'}
             </Button>
           </div>
         </form>
+      </Dialog>
+
+      {/* Created User Credentials Display Dialog */}
+      <Dialog
+        isOpen={!!createdCredentials}
+        onClose={() => setCreatedCredentials(null)}
+        title="User Account Created in MySQL"
+        description="The user record was saved directly to MySQL database and is ready for login."
+      >
+        {createdCredentials && (
+          <div className="space-y-4">
+            <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 space-y-2">
+              <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400 font-bold text-sm">
+                <Check className="w-4 h-4" />
+                <span>Account Created & Saved to Database</span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                The user can immediately log in on the login page using the credentials below:
+              </p>
+            </div>
+
+            <div className="p-4 rounded-xl bg-card border border-border space-y-3 font-mono text-xs">
+              <div className="flex items-center justify-between pb-2 border-b border-border/50">
+                <span className="text-muted-foreground font-sans">Full Name:</span>
+                <span className="font-semibold text-foreground font-sans">{createdCredentials.name}</span>
+              </div>
+              <div className="flex items-center justify-between pb-2 border-b border-border/50">
+                <span className="text-muted-foreground font-sans">Assigned Role:</span>
+                <span className="font-semibold text-foreground font-sans">{createdCredentials.role}</span>
+              </div>
+              <div className="flex items-center justify-between pb-2 border-b border-border/50">
+                <span className="text-muted-foreground font-sans">Login Email:</span>
+                <span className="font-semibold text-primary-600">{createdCredentials.email}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground font-sans">Password:</span>
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-foreground bg-muted px-2 py-1 rounded">
+                    {createdCredentials.password}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(createdCredentials.password);
+                      setCopiedPassword(true);
+                      setTimeout(() => setCopiedPassword(false), 2000);
+                    }}
+                    className="p-1 rounded bg-primary-600 text-white hover:bg-primary-700 transition-colors"
+                    title="Copy password"
+                  >
+                    {copiedPassword ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <Button onClick={() => setCreatedCredentials(null)}>
+                Done / Close
+              </Button>
+            </div>
+          </div>
+        )}
       </Dialog>
 
       {/* Bulk CSV Import Dialog */}

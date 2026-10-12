@@ -45,9 +45,14 @@ public class AuthController {
         return ResponseEntity.ok(authService.login(request));
     }
 
+    @PostMapping("/register")
+    public ResponseEntity<AuthResponse> register(@Valid @RequestBody com.campusconnect.dto.auth.RegisterRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(authService.register(request));
+    }
+
     @PostMapping("/google")
-    public ResponseEntity<AuthResponse> loginWithGoogle(@Valid @RequestBody GoogleAuthRequest request) {
-        return ResponseEntity.ok(googleAuthService.authenticateWithGoogle(request.getIdToken()));
+    public ResponseEntity<AuthResponse> loginWithGoogle(@Valid @RequestBody com.campusconnect.dto.auth.GoogleLoginRequest request) {
+        return ResponseEntity.ok(authService.loginWithGoogle(request));
     }
 
     @GetMapping("/me")

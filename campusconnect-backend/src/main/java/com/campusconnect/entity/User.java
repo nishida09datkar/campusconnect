@@ -35,10 +35,10 @@ public class User {
 
     private Integer semester;
 
-    @Column(name = "roll_no", length = 32)
+    @Column(name = "roll_no", length = 64)
     private String rollNo;
 
-    @Column(length = 16)
+    @Column(length = 32)
     private String division;
 
     @Column(name = "employee_id", length = 64)

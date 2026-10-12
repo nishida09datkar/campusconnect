@@ -18,35 +18,6 @@ export type UpdateUserData = Partial<User> & { password?: string };
 export const userService = {
   async getUsers(params: UserFilterParams = {}): Promise<PaginatedResponse<User>> {
     if (!USE_MOCKS) {
-<<<<<<< HEAD
-      const res = await apiClient.get<User[]>('/api/users', {
-        params: {
-          role: params.role,
-          departmentId: params.departmentId,
-        },
-      });
-      let users = res.data;
-      if (params.q && params.q.trim()) {
-        const search = params.q.trim().toLowerCase();
-        users = users.filter(
-          (u) =>
-            u.name?.toLowerCase().includes(search) ||
-            u.email?.toLowerCase().includes(search)
-        );
-      }
-      const page = params.page || 1;
-      const pageSize = params.pageSize || 20;
-      const total = users.length;
-      const startIndex = (page - 1) * pageSize;
-      const paginatedItems = users.slice(startIndex, startIndex + pageSize);
-
-      return {
-        items: paginatedItems,
-        total,
-        page,
-        pageSize,
-      };
-=======
       const res = await apiClient.get<PaginatedResponse<User>>('/api/users', { params });
       // Keep local mock cache in sync for LMS references
       if (res.data?.items) {
@@ -60,7 +31,6 @@ export const userService = {
         });
       }
       return res.data;
->>>>>>> origin/aarya/phase-6-updates-2026-10-12
     }
 
     await delay(70, 150);
@@ -115,6 +85,7 @@ export const userService = {
     return user ? { ...user } : null;
   },
 
+<<<<<<< Updated upstream
   async createUser(data: CreateUserData): Promise<User> {
     if (!USE_MOCKS) {
       const res = await apiClient.post<User>('/api/users', data);
@@ -126,6 +97,12 @@ export const userService = {
         db.users.push({ ...newUser });
       }
       return newUser;
+=======
+  async createUser(data: Omit<User, 'id'> & { password?: string }): Promise<User & { temporaryPassword?: string }> {
+    if (!USE_MOCKS) {
+      const res = await apiClient.post<User & { temporaryPassword?: string }>('/api/users', data);
+      return res.data;
+>>>>>>> Stashed changes
     }
 
     await delay(120, 250);
@@ -145,6 +122,7 @@ export const userService = {
         ? 'fac'
         : 'stu';
 
+    const defaultPass = data.password || `${idPrefix.toUpperCase()}@123`;
     const newUser: User = {
       ...data,
       id: `user-${idPrefix}-${Date.now().toString().slice(-6)}`,
@@ -154,9 +132,10 @@ export const userService = {
     };
 
     db.users.push(newUser);
-    return { ...newUser };
+    return { ...newUser, temporaryPassword: defaultPass };
   },
 
+<<<<<<< Updated upstream
   async updateUser(id: string, updates: UpdateUserData): Promise<User> {
     if (!USE_MOCKS) {
       const res = await apiClient.put<User>(`/api/users/${id}`, updates);
@@ -166,6 +145,12 @@ export const userService = {
         db.users[idx] = { ...updated };
       }
       return updated;
+=======
+  async updateUser(id: string, updates: Partial<User> & { password?: string }): Promise<User> {
+    if (!USE_MOCKS) {
+      const res = await apiClient.put<User>(`/api/users/${id}`, updates);
+      return res.data;
+>>>>>>> Stashed changes
     }
 
     await delay(100, 200);
@@ -195,6 +180,7 @@ export const userService = {
 
   async toggleUserStatus(id: string, isActive?: boolean): Promise<User> {
     if (!USE_MOCKS) {
+<<<<<<< Updated upstream
       const res = await apiClient.patch<User>(`/api/users/${id}/status`, { isActive });
       const updated = res.data;
       const idx = db.users.findIndex((u) => u.id === id);
@@ -202,6 +188,10 @@ export const userService = {
         db.users[idx] = { ...updated };
       }
       return updated;
+=======
+      const res = await apiClient.patch<User>(`/api/users/${id}/status`);
+      return res.data;
+>>>>>>> Stashed changes
     }
 
     await delay(80, 160);

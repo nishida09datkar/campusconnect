@@ -75,6 +75,34 @@ public class UserController {
         ));
     }
 
+    @GetMapping("/{id}")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<UserDto> getUserById(@PathVariable String id) {
+        return userRepository.findById(id)
+                .map(UserDto::from)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/{id}/can-interact")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Map<String, Object>> canInteract(
+            @PathVariable String id,
+            Authentication authentication
+    ) {
+        String currentUserId = authentication.getName();
+        if (id.equals(currentUserId)) {
+            return ResponseEntity.ok(Map.of("allowed", false, "reason", "Cannot call self"));
+        }
+
+        boolean exists = userRepository.existsById(id);
+        if (!exists) {
+            return ResponseEntity.ok(Map.of("allowed", false, "reason", "Target user not found"));
+        }
+
+        return ResponseEntity.ok(Map.of("allowed", true));
+    }
+
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> createUser(@Valid @RequestBody CreateUserRequest request) {
@@ -84,23 +112,22 @@ public class UserController {
                     .body(Map.of("message", "User with email '" + email + "' already exists."));
         }
 
-        String idPrefix = switch (request.getRole()) {
+        Role role = request.getRole() != null ? request.getRole() : Role.STUDENT;
+        String idPrefix = switch (role) {
             case ADMIN -> "admin";
             case HOD -> "hod";
             case FACULTY -> "fac";
             case STUDENT -> "stu";
-            default -> "user";
         };
         String newId = "user-" + idPrefix + "-" + (System.currentTimeMillis() % 1000000);
 
         String rawPassword = request.getPassword();
         if (rawPassword == null || rawPassword.trim().isEmpty()) {
-            rawPassword = switch (request.getRole()) {
-                case ADMIN -> "Admin@123";
-                case HOD -> "Hod@123";
-                case FACULTY -> "Fac@123";
-                case STUDENT -> "Stu@123";
-                default -> "Password@123";
+            rawPassword = switch (role) {
+                case ADMIN -> "Admin@" + (1000 + new Random().nextInt(9000));
+                case HOD -> "Hod@" + (1000 + new Random().nextInt(9000));
+                case FACULTY -> "Fac@" + (1000 + new Random().nextInt(9000));
+                case STUDENT -> "Stu@" + (1000 + new Random().nextInt(9000));
             };
         }
 
@@ -109,7 +136,7 @@ public class UserController {
         user.setEmail(email);
         user.setPassword(passwordEncoder.encode(rawPassword.trim()));
         user.setName(request.getName().trim());
-        user.setRole(request.getRole());
+        user.setRole(role);
         user.setDepartmentId(request.getDepartmentId() != null && !request.getDepartmentId().isBlank() ? request.getDepartmentId() : null);
         user.setActive(request.getActive() != null ? request.getActive() : true);
         user.setRollNo(request.getRollNo() != null ? request.getRollNo().trim() : null);
@@ -120,7 +147,9 @@ public class UserController {
         user.setAvatar(request.getAvatarUrl());
 
         User saved = userRepository.save(user);
-        return ResponseEntity.status(HttpStatus.CREATED).body(UserDto.from(saved));
+        UserDto dto = UserDto.from(saved);
+        dto.setTemporaryPassword(rawPassword.trim());
+        return ResponseEntity.status(HttpStatus.CREATED).body(dto);
     }
 
     @PutMapping("/{id}")
@@ -176,54 +205,5 @@ public class UserController {
 
         User updated = userRepository.save(user);
         return ResponseEntity.ok(UserDto.from(updated));
-    }
-
-    @GetMapping("/{id}/can-interact")
-    @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<Map<String, Object>> canInteract(
-            @PathVariable String id,
-            Authentication authentication
-    ) {
-        String currentUserId = authentication.getName();
-        // Disallow self-call
-        if (id.equals(currentUserId)) {
-            return ResponseEntity.ok(Map.of("allowed", false, "reason", "Cannot call self"));
-        }
-
-        // Check target exists
-        boolean exists = userRepository.existsById(id);
-        if (!exists) {
-            return ResponseEntity.ok(Map.of("allowed", false, "reason", "Target user not found"));
-        }
-
-        // Institutional permission logic: allows communication across active members
-        return ResponseEntity.ok(Map.of("allowed", true));
-    }
-
-    @GetMapping
-    @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<java.util.List<User>> getAllUsers(
-            @RequestParam(required = false) com.campusconnect.entity.Role role,
-            @RequestParam(required = false) String departmentId
-    ) {
-        if (role != null && departmentId != null) {
-            return ResponseEntity.ok(userRepository.findByDepartmentId(departmentId).stream()
-                    .filter(u -> u.getRole() == role)
-                    .collect(java.util.stream.Collectors.toList()));
-        } else if (role != null) {
-            return ResponseEntity.ok(userRepository.findByRole(role));
-        } else if (departmentId != null) {
-            return ResponseEntity.ok(userRepository.findByDepartmentId(departmentId));
-        }
-        return ResponseEntity.ok(userRepository.findAll());
-    }
-
-    @GetMapping("/{id}")
-    @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<UserDto> getUserById(@PathVariable String id) {
-        return userRepository.findById(id)
-                .map(UserDto::from)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
     }
 }

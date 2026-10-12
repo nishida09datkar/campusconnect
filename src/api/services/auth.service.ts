@@ -90,6 +90,58 @@ export const authService = {
     return authData;
   },
 
+  async register(data: {
+    name: string;
+    email: string;
+    password: string;
+    role?: Role;
+    departmentId?: string;
+    rollNo?: string;
+    year?: number;
+    division?: string;
+  }): Promise<AuthResponse> {
+    if (USE_MOCKS) {
+      await delay(350, 600);
+      const email = data.email.trim().toLowerCase();
+      const existing = db.users.find((u) => u.email.toLowerCase() === email);
+      if (existing) {
+        throw { status: 400, message: `Account with email '${email}' already exists.` };
+      }
+      const role = data.role || 'STUDENT';
+      const idPrefix = role.toLowerCase();
+      const newUser: User = {
+        id: `user-${idPrefix}-${Date.now().toString().slice(-6)}`,
+        name: data.name.trim(),
+        email,
+        role,
+        departmentId: data.departmentId,
+        isActive: true,
+        rollNo: data.rollNo,
+        year: data.year as 1 | 2 | 3 | 4 | undefined,
+        division: data.division,
+      };
+      db.users.push(newUser);
+      const mockToken = `mock-jwt-token-for-${newUser.id}-${Date.now()}`;
+      setAccessToken(mockToken);
+      setSessionHint({
+        userId: newUser.id,
+        email: newUser.email,
+        role: newUser.role,
+      });
+      return { accessToken: mockToken, user: newUser };
+    }
+
+    const response = await apiClient.post<BackendAuthData>('/api/auth/register', data);
+    const authData = normalizeAuthResponse(response.data);
+    setAccessToken(authData.accessToken);
+    setSessionHint({
+      userId: authData.user.id,
+      email: authData.user.email,
+      role: authData.user.role,
+    });
+    return authData;
+  },
+
   async loginWithGoogle(idToken: string): Promise<AuthResponse> {
     try {
       const response = await apiClient.post<BackendAuthData>('/api/auth/google', { idToken });

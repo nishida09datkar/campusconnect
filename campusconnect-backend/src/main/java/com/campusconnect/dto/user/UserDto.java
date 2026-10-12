@@ -20,6 +20,7 @@ public class UserDto {
     private String designation;
     private boolean active;
     private LocalDateTime createdAt;
+    private String temporaryPassword;
 
     public UserDto() {}
 
@@ -44,7 +45,7 @@ public class UserDto {
 
     public static UserDto from(User user) {
         if (user == null) return null;
-        return new UserDto(
+        UserDto dto = new UserDto(
                 user.getId(),
                 user.getEmail(),
                 user.getName(),
@@ -60,6 +61,11 @@ public class UserDto {
                 user.isActive(),
                 user.getCreatedAt()
         );
+        dto.setRollNo(user.getRollNo());
+        dto.setDivision(user.getDivision());
+        dto.setEmployeeId(user.getEmployeeId());
+        dto.setDesignation(user.getDesignation());
+        return dto;
     }
 
     public String getId() { return id; }
@@ -80,7 +86,9 @@ public class UserDto {
     public String getAvatar() { return avatar; }
     public void setAvatar(String avatar) { this.avatar = avatar; }
 
+    @JsonProperty("avatarUrl")
     public String getAvatarUrl() { return avatar; }
+    public void setAvatarUrl(String avatarUrl) { this.avatar = avatarUrl; }
 
     public Integer getYear() { return year; }
     public void setYear(Integer year) { this.year = year; }
@@ -100,6 +108,7 @@ public class UserDto {
     public String getDesignation() { return designation; }
     public void setDesignation(String designation) { this.designation = designation; }
 
+    @JsonProperty("isActive")
     public boolean isActive() { return active; }
     public void setActive(boolean active) { this.active = active; }
 
@@ -108,4 +117,7 @@ public class UserDto {
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+
+    public String getTemporaryPassword() { return temporaryPassword; }
+    public void setTemporaryPassword(String temporaryPassword) { this.temporaryPassword = temporaryPassword; }
 }
