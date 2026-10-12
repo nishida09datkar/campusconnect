@@ -4,6 +4,8 @@ dist-ssr
 *.local
 .env
 .env.*
+application-local.yml
+*-local.yml
 !.env.example
 coverage
 *.tsbuildinfo
