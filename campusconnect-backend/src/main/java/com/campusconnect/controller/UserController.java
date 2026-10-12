@@ -118,6 +118,7 @@ public class UserController {
             case HOD -> "hod";
             case FACULTY -> "fac";
             case STUDENT -> "stu";
+            default -> "user";
         };
         String newId = "user-" + idPrefix + "-" + (System.currentTimeMillis() % 1000000);
 
@@ -128,6 +129,7 @@ public class UserController {
                 case HOD -> "Hod@" + (1000 + new Random().nextInt(9000));
                 case FACULTY -> "Fac@" + (1000 + new Random().nextInt(9000));
                 case STUDENT -> "Stu@" + (1000 + new Random().nextInt(9000));
+                default -> "User@" + (1000 + new Random().nextInt(9000));
             };
         }
 

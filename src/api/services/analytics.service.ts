@@ -123,13 +123,25 @@ export const analyticsService = {
     };
   },
 
-  async getStudentAnalytics(): Promise<StudentAnalytics> {
+  async getStudentAnalytics(studentId?: string): Promise<StudentAnalytics> {
     if (!USE_MOCKS) {
       const res = await apiClient.get<StudentAnalytics>('/api/analytics/student');
       return res.data;
     }
 
     await delay(150);
+
+    const targetId = studentId || 'user-stu-1';
+    if (targetId !== 'user-stu-1') {
+      return {
+        studentId: targetId,
+        overallAttendancePercentage: 0,
+        presentSessions: 0,
+        totalSessions: 0,
+        gradesOverTime: [],
+        submissionHistory: [],
+      };
+    }
 
     return {
       studentId: 'user-stu-1',

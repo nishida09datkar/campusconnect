@@ -107,6 +107,11 @@ public class AnalyticsService {
     public StudentAnalyticsDto getStudentAnalytics(String studentId) {
         String id = studentId != null ? studentId : "user-stu-1";
 
+        // Newly registered or custom students without historical records start with clean 0 metrics
+        if (!"user-stu-1".equals(id)) {
+            return new StudentAnalyticsDto(id, 0.0, 0, 0, Collections.emptyList(), Collections.emptyList());
+        }
+
         List<StudentAnalyticsDto.GradePoint> grades = Arrays.asList(
                 new StudentAnalyticsDto.GradePoint("Lab 1: React Components", 24, 25, 96.0, "2026-09-24"),
                 new StudentAnalyticsDto.GradePoint("Quiz 1: State & Props", 18, 20, 90.0, "2026-09-28"),
