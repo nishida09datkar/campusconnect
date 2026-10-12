@@ -38,6 +38,38 @@ export const FacultyDashboard: React.FC = () => {
       assignmentIds.includes(s.assignmentId) && (s.status === 'SUBMITTED' || s.status === 'LATE')
   );
 
+  const kpis = [
+    {
+      title: 'Assigned Classes',
+      value: facultyClasses.length,
+      icon: BookOpen,
+      color: 'bg-teal-500/10 text-teal-600',
+      to: '/faculty/classes',
+    },
+    {
+      title: 'Pending Grading',
+      value: pendingSubmissions.length,
+      icon: ClipboardCheck,
+      color: 'bg-amber-500/10 text-amber-600',
+      to: '/faculty/assignments',
+    },
+    {
+      title: 'Unresolved Doubts',
+      value: unresolvedDoubts.length,
+      icon: HelpCircle,
+      color: 'bg-rose-500/10 text-rose-600',
+      to: '/chat',
+    },
+    {
+      title: 'Live Lectures',
+      value: 'Ready',
+      icon: Video,
+      color: 'bg-indigo-500/10 text-indigo-600',
+      to: 'https://meet.google.com/new',
+      isExternal: true,
+    },
+  ];
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -56,53 +88,40 @@ export const FacultyDashboard: React.FC = () => {
 
       {/* KPI Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-5 flex items-center justify-between">
-            <div className="space-y-1">
-              <span className="text-xs font-semibold text-muted-foreground uppercase">Assigned Classes</span>
-              <p className="text-2xl font-extrabold text-foreground">{facultyClasses.length}</p>
-            </div>
-            <div className="p-3 rounded-xl bg-teal-500/10 text-teal-600">
-              <BookOpen className="w-5 h-5" />
-            </div>
-          </CardContent>
-        </Card>
+        {kpis.map((kpi) => {
+          const Icon = kpi.icon;
+          const cardElement = (
+            <Card className="h-full hover:border-primary-500/40 transition-all hover:shadow-md">
+              <CardContent className="p-5 flex items-center justify-between">
+                <div className="space-y-1">
+                  <span className="text-xs font-semibold text-muted-foreground uppercase group-hover:text-primary-600 transition-colors">
+                    {kpi.title}
+                  </span>
+                  <p className="text-2xl font-extrabold text-foreground">{kpi.value}</p>
+                </div>
+                <div className={`p-3 rounded-xl ${kpi.color}`}>
+                  <Icon className="w-5 h-5" />
+                </div>
+              </CardContent>
+            </Card>
+          );
 
-        <Card>
-          <CardContent className="p-5 flex items-center justify-between">
-            <div className="space-y-1">
-              <span className="text-xs font-semibold text-muted-foreground uppercase">Pending Grading</span>
-              <p className="text-2xl font-extrabold text-foreground">{pendingSubmissions.length}</p>
-            </div>
-            <div className="p-3 rounded-xl bg-amber-500/10 text-amber-600">
-              <ClipboardCheck className="w-5 h-5" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-5 flex items-center justify-between">
-            <div className="space-y-1">
-              <span className="text-xs font-semibold text-muted-foreground uppercase">Unresolved Doubts</span>
-              <p className="text-2xl font-extrabold text-foreground">{unresolvedDoubts.length}</p>
-            </div>
-            <div className="p-3 rounded-xl bg-rose-500/10 text-rose-600">
-              <HelpCircle className="w-5 h-5" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-5 flex items-center justify-between">
-            <div className="space-y-1">
-              <span className="text-xs font-semibold text-muted-foreground uppercase">Live Lectures</span>
-              <p className="text-2xl font-extrabold text-foreground">Ready</p>
-            </div>
-            <div className="p-3 rounded-xl bg-indigo-500/10 text-indigo-600">
-              <Video className="w-5 h-5" />
-            </div>
-          </CardContent>
-        </Card>
+          return kpi.isExternal ? (
+            <a
+              key={kpi.title}
+              href={kpi.to}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group"
+            >
+              {cardElement}
+            </a>
+          ) : (
+            <Link key={kpi.title} to={kpi.to} className="group">
+              {cardElement}
+            </Link>
+          );
+        })}
       </div>
 
       {/* Classes Grid */}

@@ -1,5 +1,6 @@
 package com.campusconnect.dto.auth;
 
+import com.campusconnect.dto.user.UserDto;
 import com.campusconnect.entity.Role;
 import com.campusconnect.entity.User;
 
@@ -11,7 +12,7 @@ public class AuthResponse {
     private String name;
     private Role role;
     private String departmentId;
-    private User user;
+    private UserDto user;
 
     public AuthResponse() {}
 
@@ -25,7 +26,7 @@ public class AuthResponse {
         this.departmentId = departmentId;
     }
 
-    public AuthResponse(String token, String userId, String email, String name, Role role, String departmentId, User user) {
+    public AuthResponse(String token, String userId, String email, String name, Role role, String departmentId, UserDto user) {
         this.token = token;
         this.accessToken = token;
         this.userId = userId;
@@ -34,6 +35,17 @@ public class AuthResponse {
         this.role = role;
         this.departmentId = departmentId;
         this.user = user;
+    }
+
+    public AuthResponse(String token, String userId, String email, String name, Role role, String departmentId, User user) {
+        this.token = token;
+        this.accessToken = token;
+        this.userId = userId;
+        this.email = email;
+        this.name = name;
+        this.role = role;
+        this.departmentId = departmentId;
+        this.user = user != null ? UserDto.from(user) : null;
     }
 
     public String getToken() { return token; }
@@ -63,6 +75,6 @@ public class AuthResponse {
     public String getDepartmentId() { return departmentId; }
     public void setDepartmentId(String departmentId) { this.departmentId = departmentId; }
 
-    public User getUser() { return user; }
-    public void setUser(User user) { this.user = user; }
+    public UserDto getUser() { return user; }
+    public void setUser(UserDto user) { this.user = user; }
 }

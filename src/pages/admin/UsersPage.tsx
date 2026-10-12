@@ -57,6 +57,7 @@ export const UsersPage: React.FC = () => {
   const [formDivision, setFormDivision] = useState('A');
   const [formEmpId, setFormEmpId] = useState('');
   const [formDesignation, setFormDesignation] = useState('');
+  const [formPassword, setFormPassword] = useState('');
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -119,6 +120,7 @@ export const UsersPage: React.FC = () => {
     setFormDivision('A');
     setFormEmpId('');
     setFormDesignation('');
+    setFormPassword('');
     setFormErrors({});
     setIsModalOpen(true);
   };
@@ -134,6 +136,7 @@ export const UsersPage: React.FC = () => {
     setFormDivision(user.division || 'A');
     setFormEmpId(user.employeeId || '');
     setFormDesignation(user.designation || '');
+    setFormPassword('');
     setFormErrors({});
     setIsModalOpen(true);
   };
@@ -187,6 +190,7 @@ export const UsersPage: React.FC = () => {
           email: formEmail.trim().toLowerCase(),
           role: formRole,
           departmentId: formDeptId || undefined,
+          password: formPassword.trim() || undefined,
           rollNo: formRole === 'STUDENT' ? formRollNo.trim() : undefined,
           year: formRole === 'STUDENT' ? (formYear as 1 | 2 | 3 | 4) : undefined,
           division: formRole === 'STUDENT' ? formDivision : undefined,
@@ -196,14 +200,18 @@ export const UsersPage: React.FC = () => {
         dispatch(
           addToast({
             type: 'success',
-            message: `User '${formName.trim()}' updated successfully.`,
+            message: `User '${formName.trim()}' updated successfully.${formPassword.trim() ? ' Password updated in MySQL.' : ''}`,
           })
         );
       } else {
+        const defaultPass = formRole === 'STUDENT' ? 'Stu@123' : formRole === 'FACULTY' ? 'Fac@123' : formRole === 'HOD' ? 'Hod@123' : 'Admin@123';
+        const assignedPass = formPassword.trim() || defaultPass;
+
         await userService.createUser({
           name: formName.trim(),
           email: formEmail.trim().toLowerCase(),
           role: formRole,
+          password: formPassword.trim() || undefined,
           departmentId: formDeptId || undefined,
           isActive: true,
           rollNo: formRole === 'STUDENT' ? formRollNo.trim() : undefined,
@@ -215,7 +223,7 @@ export const UsersPage: React.FC = () => {
         dispatch(
           addToast({
             type: 'success',
-            message: `User '${formName.trim()}' created successfully.`,
+            message: `User '${formName.trim()}' enrolled in MySQL! Login password: ${assignedPass}`,
           })
         );
       }
@@ -520,6 +528,23 @@ export const UsersPage: React.FC = () => {
               if (formErrors.email) setFormErrors({ ...formErrors, email: '' });
             }}
             error={formErrors.email}
+          />
+
+          <Input
+            label={editingUser ? "Change Password in MySQL (Optional)" : "Login Password"}
+            type="text"
+            placeholder={
+              editingUser
+                ? "Leave blank to keep existing password"
+                : `e.g. Stu@123 (Default: ${formRole === 'STUDENT' ? 'Stu@123' : formRole === 'FACULTY' ? 'Fac@123' : formRole === 'HOD' ? 'Hod@123' : 'Admin@123'})`
+            }
+            value={formPassword}
+            onChange={(e) => setFormPassword(e.target.value)}
+            helperText={
+              editingUser
+                ? "Leave empty to keep the user's current password in MySQL."
+                : `Saved directly to MySQL (BCrypt encrypted). If left blank, defaults to ${formRole === 'STUDENT' ? 'Stu@123' : formRole === 'FACULTY' ? 'Fac@123' : 'Admin@123'}.`
+            }
           />
 
           <div className="grid grid-cols-2 gap-3">

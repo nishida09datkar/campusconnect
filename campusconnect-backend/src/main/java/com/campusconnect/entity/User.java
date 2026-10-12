@@ -35,6 +35,18 @@ public class User {
 
     private Integer semester;
 
+    @Column(name = "roll_no", length = 32)
+    private String rollNo;
+
+    @Column(length = 16)
+    private String division;
+
+    @Column(name = "employee_id", length = 64)
+    private String employeeId;
+
+    @Column(length = 128)
+    private String designation;
+
     @Column(nullable = false)
     private boolean active = true;
 
@@ -79,6 +91,18 @@ public class User {
 
     public Integer getSemester() { return semester; }
     public void setSemester(Integer semester) { this.semester = semester; }
+
+    public String getRollNo() { return rollNo; }
+    public void setRollNo(String rollNo) { this.rollNo = rollNo; }
+
+    public String getDivision() { return division; }
+    public void setDivision(String division) { this.division = division; }
+
+    public String getEmployeeId() { return employeeId; }
+    public void setEmployeeId(String employeeId) { this.employeeId = employeeId; }
+
+    public String getDesignation() { return designation; }
+    public void setDesignation(String designation) { this.designation = designation; }
 
     @com.fasterxml.jackson.annotation.JsonProperty("isActive")
     public boolean isActive() { return active; }

@@ -120,6 +120,37 @@ export const HodDashboard: React.FC = () => {
     );
   }
 
+  const kpis = [
+    {
+      title: 'Department Faculty',
+      value: faculty.length,
+      icon: Users,
+      color: 'bg-teal-500/10 text-teal-600 dark:text-teal-400',
+      to: '/hod/allocation',
+    },
+    {
+      title: 'Active Courses',
+      value: courses.length,
+      icon: BookOpen,
+      color: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400',
+      to: '/hod/allocation',
+    },
+    {
+      title: 'Department Students',
+      value: students.length,
+      icon: Users,
+      color: 'bg-sky-500/10 text-sky-600 dark:text-sky-400',
+      to: '/hod/analytics',
+    },
+    {
+      title: 'Circulars Broadcasted',
+      value: notices.length,
+      icon: Bell,
+      color: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
+      to: '/hod/notices',
+    },
+  ];
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -143,61 +174,26 @@ export const HodDashboard: React.FC = () => {
 
       {/* Department KPI Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-5 flex items-center justify-between">
-            <div className="space-y-1">
-              <span className="text-xs font-semibold text-muted-foreground uppercase">
-                Department Faculty
-              </span>
-              <p className="text-2xl font-extrabold text-foreground">{faculty.length}</p>
-            </div>
-            <div className="p-3 rounded-xl bg-teal-500/10 text-teal-600 dark:text-teal-400">
-              <Users className="w-5 h-5" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-5 flex items-center justify-between">
-            <div className="space-y-1">
-              <span className="text-xs font-semibold text-muted-foreground uppercase">
-                Active Courses
-              </span>
-              <p className="text-2xl font-extrabold text-foreground">{courses.length}</p>
-            </div>
-            <div className="p-3 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
-              <BookOpen className="w-5 h-5" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-5 flex items-center justify-between">
-            <div className="space-y-1">
-              <span className="text-xs font-semibold text-muted-foreground uppercase">
-                Department Students
-              </span>
-              <p className="text-2xl font-extrabold text-foreground">{students.length}</p>
-            </div>
-            <div className="p-3 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400">
-              <Users className="w-5 h-5" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-5 flex items-center justify-between">
-            <div className="space-y-1">
-              <span className="text-xs font-semibold text-muted-foreground uppercase">
-                Circulars Broadcasted
-              </span>
-              <p className="text-2xl font-extrabold text-foreground">{notices.length}</p>
-            </div>
-            <div className="p-3 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
-              <Bell className="w-5 h-5" />
-            </div>
-          </CardContent>
-        </Card>
+        {kpis.map((kpi) => {
+          const Icon = kpi.icon;
+          return (
+            <Link key={kpi.title} to={kpi.to} className="group">
+              <Card className="h-full hover:border-primary-500/40 transition-all hover:shadow-md">
+                <CardContent className="p-5 flex items-center justify-between">
+                  <div className="space-y-1">
+                    <span className="text-xs font-semibold text-muted-foreground uppercase group-hover:text-primary-600 transition-colors">
+                      {kpi.title}
+                    </span>
+                    <p className="text-2xl font-extrabold text-foreground">{kpi.value}</p>
+                  </div>
+                  <div className={`p-3 rounded-xl ${kpi.color}`}>
+                    <Icon className="w-5 h-5" />
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+          );
+        })}
       </div>
 
       {/* Workload and Notices */}

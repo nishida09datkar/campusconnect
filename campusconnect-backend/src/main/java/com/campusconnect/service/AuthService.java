@@ -45,7 +45,7 @@ public class AuthService {
                 user.getName(),
                 user.getRole(),
                 user.getDepartmentId(),
-                user
+                com.campusconnect.dto.user.UserDto.from(user)
         );
     }
 
