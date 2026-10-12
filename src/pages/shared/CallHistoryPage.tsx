@@ -38,10 +38,12 @@ export const CallHistoryPage: React.FC = () => {
     setIsLoading(true);
     try {
       const filters: CallLogFilters = {
+        userId: currentUser?.id,
         outcome: outcomeFilter !== 'ALL' ? outcomeFilter : undefined,
         kind: kindFilter !== 'ALL' ? kindFilter : undefined,
-        startDate: startDate ? new Date(startDate).toISOString() : undefined,
-        endDate: endDate ? new Date(endDate).toISOString() : undefined,
+        // The range covers whole days in the viewer's own time zone
+        startDate: startDate ? new Date(`${startDate}T00:00:00`).toISOString() : undefined,
+        endDate: endDate ? new Date(`${endDate}T23:59:59.999`).toISOString() : undefined,
       };
       const data = await callLogService.getCallLogs(filters);
       setLogs(data);
@@ -54,7 +56,7 @@ export const CallHistoryPage: React.FC = () => {
 
   useEffect(() => {
     fetchLogs();
-  }, [outcomeFilter, kindFilter, startDate, endDate]);
+  }, [currentUser?.id, outcomeFilter, kindFilter, startDate, endDate]);
 
   const handleCallBack = (log: CallLog) => {
     // Determine the peer user ID and object
@@ -233,8 +235,9 @@ export const CallHistoryPage: React.FC = () => {
               ) : (
                 filteredLogs.map((log) => {
                   const isCaller = log.callerId === currentUser?.id;
+                  // A lecture has a room instead of a callee
                   const peerName = isCaller
-                    ? log.calleeName || log.calleeId || 'Unknown Callee'
+                    ? log.calleeName || log.calleeId || log.roomId || 'Unknown Callee'
                     : log.callerName || log.callerId || 'Unknown Caller';
 
                   return (
@@ -273,7 +276,7 @@ export const CallHistoryPage: React.FC = () => {
                         <div>
                           <span className="font-medium text-foreground block">{peerName}</span>
                           <span className="text-[10px] text-muted-foreground">
-                            {isCaller ? `To: ${log.calleeName || log.calleeId}` : `From: ${log.callerName || log.callerId}`}
+                            {isCaller ? `To: ${peerName}` : `From: ${peerName}`}
                           </span>
                         </div>
                       </td>

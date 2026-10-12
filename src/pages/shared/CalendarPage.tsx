@@ -243,6 +243,9 @@ export const CalendarPage: React.FC = () => {
     if (!meetingDate) newErrors.date = 'Date is required';
     if (!meetingStartTime) newErrors.startTime = 'Start time is required';
     if (!meetingEndTime) newErrors.endTime = 'End time is required';
+    else if (meetingStartTime && meetingEndTime <= meetingStartTime) {
+      newErrors.endTime = 'End time must be after the start time';
+    }
 
     if (Object.keys(newErrors).length > 0) {
       setFormErrors(newErrors);
@@ -253,8 +256,9 @@ export const CalendarPage: React.FC = () => {
 
     setIsSubmitting(true);
     try {
-      const startIso = `${meetingDate}T${meetingStartTime}:00Z`;
-      const endIso = `${meetingDate}T${meetingEndTime}:00Z`;
+      // The date and time inputs hold local time
+      const startIso = new Date(`${meetingDate}T${meetingStartTime}:00`).toISOString();
+      const endIso = new Date(`${meetingDate}T${meetingEndTime}:00`).toISOString();
 
       let manualMeetUrl: string | undefined = undefined;
       let requestGoogleMeet = false;

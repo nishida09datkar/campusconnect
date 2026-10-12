@@ -13,6 +13,10 @@ export interface AppSocket {
 }
 
 let realSocketInstance: Socket | null = null;
+let socketToken = '';
+
+const toBearer = (token: string | null): string =>
+  token ? (token.startsWith('Bearer ') ? token : `Bearer ${token}`) : '';
 
 export function getSocketClient(): AppSocket {
   if (USE_MOCKS) {
@@ -20,13 +24,11 @@ export function getSocketClient(): AppSocket {
   }
 
   if (!realSocketInstance) {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') || '' : '';
+    // The server rejects unauthenticated handshakes, so stay offline until updateSocketAuthToken supplies a token.
     realSocketInstance = io(SOCKET_URL, {
-      autoConnect: true,
+      autoConnect: false,
       transports: ['websocket', 'polling'],
-      auth: {
-        token: token ? (token.startsWith('Bearer ') ? token : `Bearer ${token}`) : '',
-      },
+      auth: (cb) => cb({ token: socketToken }),
     });
 
     realSocketInstance.on('connect_error', (err) => {
@@ -37,15 +39,12 @@ export function getSocketClient(): AppSocket {
   return realSocketInstance as unknown as AppSocket;
 }
 
-export function updateSocketAuthToken(token: string): void {
-  if (realSocketInstance) {
-    realSocketInstance.auth = {
-      token: token.startsWith('Bearer ') ? token : `Bearer ${token}`,
-    };
-    if (realSocketInstance.connected) {
-      realSocketInstance.disconnect().connect();
-    }
-  }
+export function updateSocketAuthToken(token: string | null): void {
+  const next = toBearer(token);
+  if (!realSocketInstance || next === socketToken) return;
+  socketToken = next;
+  realSocketInstance.disconnect();
+  if (next) realSocketInstance.connect();
 }
 
 export const socketClient = getSocketClient();

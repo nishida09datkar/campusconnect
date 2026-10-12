@@ -19,21 +19,24 @@ export const LectureLobby: React.FC<LectureLobbyProps> = ({
   const [isMuted, setIsMuted] = useState(isStudent);
   const [isCameraOff, setIsCameraOff] = useState(isStudent);
   const [stream, setStream] = useState<MediaStream | null>(null);
-  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const handedOffRef = useRef(false);
 
   useEffect(() => {
+    let cancelled = false;
     let localStream: MediaStream | null = null;
     async function setupPreview() {
       try {
         if (typeof navigator !== 'undefined' && navigator.mediaDevices?.getUserMedia) {
-          localStream = await navigator.mediaDevices.getUserMedia({
+          const acquired = await navigator.mediaDevices.getUserMedia({
             audio: true,
             video: !isStudent,
           });
-          setStream(localStream);
-          if (videoRef.current) {
-            videoRef.current.srcObject = localStream;
+          if (cancelled) {
+            acquired.getTracks().forEach((t) => t.stop());
+            return;
           }
+          localStream = acquired;
+          setStream(acquired);
         }
       } catch (err) {
         console.warn('Lobby camera/mic preview access denied or unavailable:', err);
@@ -43,28 +46,31 @@ export const LectureLobby: React.FC<LectureLobbyProps> = ({
     setupPreview();
 
     return () => {
-      if (localStream) {
+      cancelled = true;
+      // Once joined, the lecture room owns the stream; stopping it here would kill its mic and camera.
+      if (localStream && !handedOffRef.current) {
         localStream.getTracks().forEach((t) => t.stop());
       }
     };
   }, [isStudent]);
 
-  const toggleMute = () => {
-    if (stream) {
-      stream.getAudioTracks().forEach((t) => {
-        t.enabled = isMuted;
-      });
-    }
-    setIsMuted(!isMuted);
-  };
+  useEffect(() => {
+    if (!stream) return;
+    stream.getAudioTracks().forEach((t) => {
+      t.enabled = !isMuted;
+    });
+    stream.getVideoTracks().forEach((t) => {
+      t.enabled = !isCameraOff;
+    });
+  }, [stream, isMuted, isCameraOff]);
 
-  const toggleCamera = () => {
-    if (stream) {
-      stream.getVideoTracks().forEach((t) => {
-        t.enabled = isCameraOff;
-      });
-    }
-    setIsCameraOff(!isCameraOff);
+  const toggleMute = () => setIsMuted(!isMuted);
+
+  const toggleCamera = () => setIsCameraOff(!isCameraOff);
+
+  const handleJoin = () => {
+    handedOffRef.current = true;
+    onJoin({ isMuted, isCameraOff, stream });
   };
 
   return (
@@ -85,7 +91,9 @@ export const LectureLobby: React.FC<LectureLobbyProps> = ({
         <div className="relative aspect-video bg-slate-950 rounded-xl overflow-hidden border border-border flex items-center justify-center">
           {!isCameraOff && stream && stream.getVideoTracks().length > 0 ? (
             <video
-              ref={videoRef}
+              ref={(el) => {
+                if (el && el.srcObject !== stream) el.srcObject = stream;
+              }}
               autoPlay
               playsInline
               muted
@@ -143,7 +151,7 @@ export const LectureLobby: React.FC<LectureLobbyProps> = ({
         {/* Join Button */}
         <Button
           variant="primary"
-          onClick={() => onJoin({ isMuted, isCameraOff, stream })}
+          onClick={handleJoin}
           className="w-full py-6 text-base font-semibold flex items-center justify-center gap-2 shadow-lg shadow-primary/20"
         >
           <span>Join Lecture Room</span>

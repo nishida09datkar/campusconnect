@@ -26,6 +26,7 @@ import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
 import { Dialog } from '@/components/ui/Dialog';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { format } from 'date-fns';
 import { formatDate } from '@/utils/format';
 import {
   ArrowLeft,
@@ -54,6 +55,9 @@ import { AudioPlayer } from '@/components/common/AudioPlayer';
 import { AudioRecorderButton } from '@/components/common/AudioRecorderButton';
 
 type TabKey = 'stream' | 'assignments' | 'materials' | 'people' | 'attendance' | 'grades';
+
+// The value format of <input type="datetime-local">
+const DATETIME_LOCAL_FORMAT = "yyyy-MM-dd'T'HH:mm";
 
 export const ClassDetailPage: React.FC = () => {
   const { id, classId: paramClassId } = useParams<{ id?: string; classId?: string }>();
@@ -105,9 +109,7 @@ export const ClassDetailPage: React.FC = () => {
   const [studentSearch, setStudentSearch] = useState('');
 
   // Tab 5: Attendance state
-  const [selectedDate, setSelectedDate] = useState<string>(
-    new Date().toISOString().split('T')[0]
-  );
+  const [selectedDate, setSelectedDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
   const [attendanceEntries, setAttendanceEntries] = useState<Record<string, 'PRESENT' | 'ABSENT' | 'LATE'>>({});
   const [attendanceOverview, setAttendanceOverview] = useState<ClassAttendanceOverview | null>(null);
   const [isSavingAttendance, setIsSavingAttendance] = useState(false);
@@ -136,6 +138,10 @@ export const ClassDetailPage: React.FC = () => {
 
   useEffect(() => {
     loadClassroom();
+    if (!classId) return;
+    // The tab badges show these counts before the tabs themselves are opened
+    assignmentService.getClassAssignments(classId, true).then(setAssignments);
+    materialService.getClassMaterials(classId).then(setMaterials);
   }, [classId]);
 
   // Load tab-specific data when tab changes
@@ -283,8 +289,8 @@ export const ClassDetailPage: React.FC = () => {
       setEditingAssignment(assignment);
       setAssignTitle(assignment.title);
       setAssignInstructions(assignment.instructions);
-      // Format to datetime-local
-      const dateStr = assignment.dueAt ? new Date(assignment.dueAt).toISOString().slice(0, 16) : '';
+      // datetime-local holds local time (it is read back as local time on save)
+      const dateStr = assignment.dueAt ? format(new Date(assignment.dueAt), DATETIME_LOCAL_FORMAT) : '';
       setAssignDueAt(dateStr);
       setAssignMaxMarks(assignment.maxMarks);
       setAssignStatus(assignment.status || 'PUBLISHED');
@@ -297,7 +303,7 @@ export const ClassDetailPage: React.FC = () => {
       const d = new Date();
       d.setDate(d.getDate() + 7);
       d.setHours(23, 59, 0, 0);
-      setAssignDueAt(d.toISOString().slice(0, 16));
+      setAssignDueAt(format(d, DATETIME_LOCAL_FORMAT));
       setAssignMaxMarks(25);
       setAssignStatus('PUBLISHED');
       setAssignAttachmentName('');
@@ -688,7 +694,7 @@ export const ClassDetailPage: React.FC = () => {
                         )}
                       </div>
                       <p className="text-[11px] text-muted-foreground">
-                        {formatDate(post.createdAt, 'MMM d, yyyy &bull; h:mm a')}
+                        {formatDate(post.createdAt, "MMM d, yyyy '•' h:mm a")}
                       </p>
                     </div>
                   </div>
@@ -1445,16 +1451,15 @@ export const ClassDetailPage: React.FC = () => {
                     <tr>
                       <th className="p-3.5">Student Name</th>
                       <th className="p-3.5">Roll No</th>
-                      {assignments
-                        .filter((a) => a.status !== 'DRAFT')
-                        .map((a) => (
-                          <th key={a.id} className="p-3.5 whitespace-nowrap">
-                            {a.title}
-                            <span className="block text-[10px] text-muted-foreground font-normal">
-                              Max: {a.maxMarks}
-                            </span>
-                          </th>
-                        ))}
+                      {/* Headings come from the same grade rows as the cells below, so they always line up */}
+                      {gradeOverview[0].grades.map((g) => (
+                        <th key={g.assignmentId} className="p-3.5 whitespace-nowrap">
+                          {g.assignmentTitle}
+                          <span className="block text-[10px] text-muted-foreground font-normal">
+                            Max: {g.maxMarks}
+                          </span>
+                        </th>
+                      ))}
                       <th className="p-3.5 whitespace-nowrap">Total Earned</th>
                       <th className="p-3.5 whitespace-nowrap">Overall Percentage</th>
                     </tr>

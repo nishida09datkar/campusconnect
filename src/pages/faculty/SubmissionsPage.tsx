@@ -192,7 +192,7 @@ export const SubmissionsPage: React.FC = () => {
 
       <PageHeader
         title={`Submissions: ${assignment.title}`}
-        description={`${classroom?.course?.code || 'COURSE'} &bull; Section ${classroom?.section || 'A'} &bull; Max Marks: ${assignment.maxMarks}`}
+        description={`${classroom?.course?.code || 'COURSE'} • Section ${classroom?.section || 'A'} • Max Marks: ${assignment.maxMarks}`}
         actions={
           <Badge
             variant={

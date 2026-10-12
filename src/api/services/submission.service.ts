@@ -69,6 +69,9 @@ export const submissionService = {
     if (!assignment) {
       throw new Error(`Assignment with ID ${assignmentId} not found`);
     }
+    if (assignment.status === 'DRAFT') {
+      throw new Error('This assignment is not open for submissions yet.');
+    }
 
     const now = new Date();
     const isLate = now.getTime() > new Date(assignment.dueAt).getTime();
@@ -81,6 +84,10 @@ export const submissionService = {
     let submission: Submission;
 
     if (existingIndex !== -1) {
+      // A grade belongs to the work it was given for, so graded work can no longer be replaced
+      if (db.submissions[existingIndex].status === 'GRADED') {
+        throw new Error('This assignment has already been graded and can no longer be resubmitted.');
+      }
       submission = {
         ...db.submissions[existingIndex],
         files: data.files,

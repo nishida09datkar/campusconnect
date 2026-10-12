@@ -14,6 +14,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Button } from '@/components/ui/Button';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { formatDate } from '@/utils/format';
+import { sanitizeHtml } from '@/utils/sanitize';
 import {
   Users,
   BookOpen,
@@ -276,7 +277,7 @@ export const HodDashboard: React.FC = () => {
                   </div>
                   <div
                     className="text-xs text-muted-foreground line-clamp-2"
-                    dangerouslySetInnerHTML={{ __html: notice.body }}
+                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(notice.body) }}
                   />
                   <div className="flex items-center justify-between pt-1">
                     <span className="text-[10px] uppercase font-semibold text-primary-600 dark:text-primary-400">

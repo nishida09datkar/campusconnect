@@ -2,11 +2,13 @@ import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { AuthState, LoginRequest, AuthResponse, User, ApiError } from '@/types';
 import { authService } from '@/api/services/auth.service';
 import { getAccessToken } from '@/api/axios';
+import { getSessionHint } from '@/utils/storage';
 
 const initialState: AuthState = {
   user: null,
   accessToken: null,
-  status: 'idle',
+  // A saved session is restored on startup; starting in 'loading' keeps route guards from redirecting to /login first.
+  status: getSessionHint() ? 'loading' : 'idle',
   error: null,
 };
 

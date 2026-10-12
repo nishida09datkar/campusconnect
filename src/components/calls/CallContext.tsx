@@ -29,12 +29,12 @@ export const CallProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       {rtc.callState === 'calling' && rtc.activeCall && (
         <OutgoingCallOverlay
           call={rtc.activeCall}
-          onCancel={() => rtc.declineCall('Cancelled')}
+          onCancel={rtc.cancelCall}
         />
       )}
 
-      {/* Global Active Call Viewport */}
-      {rtc.callState === 'connected' && rtc.activeCall && (
+      {/* Global Active Call Viewport (also while connecting, so the user can always hang up) */}
+      {(rtc.callState === 'connecting' || rtc.callState === 'connected') && rtc.activeCall && (
         <CallScreen
           call={rtc.activeCall}
           localStream={rtc.localStream}

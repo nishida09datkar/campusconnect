@@ -24,7 +24,7 @@ export function usePresence(userId?: string) {
   // Subscribe to real-time presence events from socket
   useSocketEvent('presence:update', (updated: PresenceState) => {
     dispatch(presenceReceived(updated));
-  }, [dispatch]);
+  });
 
   return presence || {
     userId: userId || '',
@@ -46,7 +46,7 @@ export function useBatchPresence(userIds: string[]) {
 
   useSocketEvent('presence:update', (updated: PresenceState) => {
     dispatch(presenceReceived(updated));
-  }, [dispatch]);
+  });
 
   return presenceMap;
 }

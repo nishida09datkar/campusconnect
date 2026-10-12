@@ -9,99 +9,121 @@ import {
 
 interface LectureRoom {
   roomId: string;
-  hostUserId: string;
   participants: Map<string, LectureParticipant>;
+  // The sockets each participant joined from: a user stays in the lecture until the last of them is gone
+  socketIds: Map<string, Set<string>>;
 }
 
 const lectureRooms = new Map<string, LectureRoom>();
 
+const STAFF_ROLES = ['FACULTY', 'HOD', 'ADMIN'];
+const MAX_NAME_LENGTH = 100;
+
+const channel = (roomId: string) => `lecture:${roomId}`;
+
+function isRoomId(value: unknown): value is string {
+  return typeof value === 'string' && value.length > 0 && value.length <= 200;
+}
+
 export function registerLectureHandlers(io: Server, socket: Socket) {
   const currentUser = socket.data.user;
+  // Identity and role always come from the verified token, never from a payload
+  const userId: string | undefined = currentUser?.userId;
+  const role: string = currentUser?.role || 'STUDENT';
+  const isStaff = STAFF_ROLES.includes(role);
+
+  const broadcastParticipants = (room: LectureRoom) => {
+    io.to(channel(room.roomId)).emit('lecture:participants', {
+      roomId: room.roomId,
+      participants: Array.from(room.participants.values()),
+    });
+  };
+
+  // Takes this socket out of the room; the user goes with it only when it was their last one there
+  const leaveRoom = (room: LectureRoom) => {
+    if (!userId) return;
+    const sockets = room.socketIds.get(userId);
+    if (!sockets || !sockets.delete(socket.id)) return;
+
+    socket.leave(channel(room.roomId));
+    if (sockets.size > 0) return;
+
+    room.socketIds.delete(userId);
+    room.participants.delete(userId);
+    broadcastParticipants(room);
+    if (room.participants.size === 0) {
+      lectureRooms.delete(room.roomId);
+    }
+  };
 
   // 1. Join lecture room
   socket.on('lecture:join', (payload: LectureJoinPayload) => {
-    const roomId = payload.roomId;
-    const userId = payload.userId || currentUser?.userId;
-    const name = payload.name || currentUser?.email || 'Student';
-    const role = payload.role || currentUser?.role || 'STUDENT';
+    const roomId = payload?.roomId;
+    if (!userId || !isRoomId(roomId)) return;
 
-    socket.join(`lecture:${roomId}`);
+    const name =
+      typeof payload.name === 'string' && payload.name.trim()
+        ? payload.name.trim().slice(0, MAX_NAME_LENGTH)
+        : currentUser?.email || 'Student';
 
-    if (!lectureRooms.has(roomId)) {
-      lectureRooms.set(roomId, {
-        roomId,
-        hostUserId: userId,
-        participants: new Map(),
-      });
+    socket.join(channel(roomId));
+
+    let room = lectureRooms.get(roomId);
+    if (!room) {
+      room = { roomId, participants: new Map(), socketIds: new Map() };
+      lectureRooms.set(roomId, room);
     }
 
-    const room = lectureRooms.get(roomId)!;
-    const participant: LectureParticipant = {
-      userId,
-      name,
-      role,
-      isHandRaised: false,
-      isMuted: role === 'STUDENT', // Muted by default for students
-      isCameraOff: role === 'STUDENT', // Cam off by default for students
-      joinedAt: new Date().toISOString(),
-    };
+    if (!room.socketIds.has(userId)) {
+      room.socketIds.set(userId, new Set());
+    }
+    room.socketIds.get(userId)!.add(socket.id);
 
-    room.participants.set(userId, participant);
+    // Joining again from another tab keeps the state (e.g. a raised hand) the user already has
+    if (!room.participants.has(userId)) {
+      room.participants.set(userId, {
+        userId,
+        name,
+        role,
+        isHandRaised: false,
+        isMuted: role === 'STUDENT', // Muted by default for students
+        isCameraOff: role === 'STUDENT', // Cam off by default for students
+        joinedAt: new Date().toISOString(),
+      });
+    }
 
     // Broadcast updated participant list to room
-    const participantsList = Array.from(room.participants.values());
-    io.to(`lecture:${roomId}`).emit('lecture:participants', {
-      roomId,
-      participants: participantsList,
-    });
+    broadcastParticipants(room);
   });
 
-  // 2. Leave lecture room
+  // 2. Leave lecture room (only ever oneself)
   socket.on('lecture:leave', (payload: LectureLeavePayload) => {
-    const roomId = payload.roomId;
-    const userId = payload.userId || currentUser?.userId;
-
-    socket.leave(`lecture:${roomId}`);
-
-    const room = lectureRooms.get(roomId);
-    if (room) {
-      room.participants.delete(userId);
-      const participantsList = Array.from(room.participants.values());
-      io.to(`lecture:${roomId}`).emit('lecture:participants', {
-        roomId,
-        participants: participantsList,
-      });
-
-      if (room.participants.size === 0) {
-        lectureRooms.delete(roomId);
-      }
-    }
+    const room = isRoomId(payload?.roomId) ? lectureRooms.get(payload.roomId) : undefined;
+    if (room) leaveRoom(room);
   });
 
   // 3. Raise / lower hand
   socket.on('lecture:hand', (payload: LectureHandPayload) => {
-    const room = lectureRooms.get(payload.roomId);
-    if (room && room.participants.has(payload.userId)) {
-      const p = room.participants.get(payload.userId)!;
-      p.isHandRaised = payload.raised;
-      io.to(`lecture:${payload.roomId}`).emit('lecture:participants', {
-        roomId: payload.roomId,
-        participants: Array.from(room.participants.values()),
-      });
-    }
+    const room = isRoomId(payload?.roomId) ? lectureRooms.get(payload.roomId) : undefined;
+    if (!room || !userId || typeof payload.raised !== 'boolean') return;
+
+    // Students control their own hand; staff may also lower somebody else's
+    const targetUserId = isStaff && typeof payload.userId === 'string' ? payload.userId : userId;
+    if (!isStaff && payload.userId && payload.userId !== userId) return;
+
+    const participant = room.participants.get(targetUserId);
+    if (!participant) return;
+
+    participant.isHandRaised = payload.raised;
+    broadcastParticipants(room);
   });
 
   // 4. Faculty Moderation Controls
   socket.on('lecture:control', (payload: LectureControlPayload) => {
-    const room = lectureRooms.get(payload.roomId);
+    const room = isRoomId(payload?.roomId) ? lectureRooms.get(payload.roomId) : undefined;
     if (!room) return;
 
-    // Verify host or faculty role
-    const userRole = currentUser?.role;
-    const isHost = room.hostUserId === currentUser?.userId;
-    const isFaculty = userRole === 'FACULTY' || userRole === 'ADMIN' || userRole === 'HOD';
-
-    if (!isHost && !isFaculty) {
+    if (!isStaff) {
       socket.emit('lecture:error', { message: 'Unauthorized to perform moderation actions' });
       return;
     }
@@ -112,40 +134,29 @@ export function registerLectureHandlers(io: Server, socket: Socket) {
           p.isMuted = true;
         }
       });
-      io.to(`lecture:${payload.roomId}`).emit('lecture:participants', {
-        roomId: payload.roomId,
-        participants: Array.from(room.participants.values()),
+      broadcastParticipants(room);
+      io.to(channel(room.roomId)).emit('lecture:control', payload);
+    } else if (payload.action === 'REMOVE_PARTICIPANT' && typeof payload.targetUserId === 'string') {
+      // Tell the room first, so the removed participant still hears about it, then cut them off
+      io.to(channel(room.roomId)).emit('lecture:control', payload);
+      room.socketIds.get(payload.targetUserId)?.forEach((sockId) => {
+        io.in(sockId).socketsLeave(channel(room.roomId));
       });
-      io.to(`lecture:${payload.roomId}`).emit('lecture:control', payload);
-    } else if (payload.action === 'REMOVE_PARTICIPANT' && payload.targetUserId) {
+      room.socketIds.delete(payload.targetUserId);
       room.participants.delete(payload.targetUserId);
-      io.to(`lecture:${payload.roomId}`).emit('lecture:participants', {
-        roomId: payload.roomId,
-        participants: Array.from(room.participants.values()),
-      });
-      io.to(`lecture:${payload.roomId}`).emit('lecture:control', payload);
+      broadcastParticipants(room);
+      if (room.participants.size === 0) {
+        lectureRooms.delete(room.roomId);
+      }
     } else if (payload.action === 'END_LECTURE') {
-      io.to(`lecture:${payload.roomId}`).emit('lecture:control', payload);
-      lectureRooms.delete(payload.roomId);
+      io.to(channel(room.roomId)).emit('lecture:control', payload);
+      io.in(channel(room.roomId)).socketsLeave(channel(room.roomId));
+      lectureRooms.delete(room.roomId);
     }
   });
 
   // Handle sudden socket disconnect
   socket.on('disconnect', () => {
-    const userId = currentUser?.userId;
-    if (!userId) return;
-
-    lectureRooms.forEach((room, roomId) => {
-      if (room.participants.has(userId)) {
-        room.participants.delete(userId);
-        io.to(`lecture:${roomId}`).emit('lecture:participants', {
-          roomId,
-          participants: Array.from(room.participants.values()),
-        });
-        if (room.participants.size === 0) {
-          lectureRooms.delete(roomId);
-        }
-      }
-    });
+    lectureRooms.forEach((room) => leaveRoom(room));
   });
 }

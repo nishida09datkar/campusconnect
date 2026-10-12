@@ -112,6 +112,17 @@ export const StudentClassDetailPage: React.FC = () => {
 
   useEffect(() => {
     loadClassroom();
+    if (!classId) return;
+    // The tab badge shows this count before the tab itself is opened
+    assignmentService.getClassAssignments(classId, false).then((list) => {
+      setAssignments(
+        list.map((a) => ({
+          ...a,
+          submissionStatus: 'PENDING',
+        }))
+      );
+    });
+    materialService.getClassMaterials(classId).then(setMaterials);
   }, [classId]);
 
   // Load tab-specific data
@@ -433,7 +444,7 @@ export const StudentClassDetailPage: React.FC = () => {
                         )}
                       </div>
                       <p className="text-[11px] text-muted-foreground">
-                        {formatDate(post.createdAt, 'MMM d, yyyy &bull; h:mm a')}
+                        {formatDate(post.createdAt, "MMM d, yyyy '•' h:mm a")}
                       </p>
                     </div>
                   </div>
@@ -907,7 +918,9 @@ export const StudentClassDetailPage: React.FC = () => {
                               </span>
                             ) : (
                               <span className="text-muted-foreground font-normal italic">
-                                {item.status === 'SUBMITTED' ? 'Awaiting grading' : 'Not submitted'}
+                                {item.status === 'SUBMITTED' || item.status === 'LATE'
+                                  ? 'Awaiting grading'
+                                  : 'Not submitted'}
                               </span>
                             )}
                           </td>

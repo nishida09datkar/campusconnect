@@ -14,6 +14,8 @@ export interface CreateCallLogDto {
 }
 
 export interface CallLogFilters {
+  /** Whose history to return. Mock data only: the backend takes the user from the access token. */
+  userId?: string;
   outcome?: string;
   kind?: string;
   startDate?: string;
@@ -77,11 +79,23 @@ export const callLogService = {
   async getCallLogs(filters?: CallLogFilters): Promise<CallLog[]> {
     if (USE_MOCKS) {
       let filtered = [...mockLogsStorage];
+      if (filters?.userId) {
+        filtered = filtered.filter((log) => log.callerId === filters.userId || log.calleeId === filters.userId);
+      }
       if (filters?.outcome && filters.outcome !== 'ALL') {
         filtered = filtered.filter((log) => log.outcome === filters.outcome);
       }
       if (filters?.kind && filters.kind !== 'ALL') {
         filtered = filtered.filter((log) => log.kind === filters.kind);
+      }
+      // Same range rule as the backend query: startDate <= startedAt <= endDate
+      if (filters?.startDate) {
+        const from = new Date(filters.startDate).getTime();
+        filtered = filtered.filter((log) => new Date(log.startedAt).getTime() >= from);
+      }
+      if (filters?.endDate) {
+        const to = new Date(filters.endDate).getTime();
+        filtered = filtered.filter((log) => new Date(log.startedAt).getTime() <= to);
       }
       return filtered;
     }

@@ -13,6 +13,7 @@ import { CallState } from '@/types/communication';
 import { User } from '@/types';
 import { canInteract } from '@/utils/permissions';
 import { db } from '@/api/mock/db';
+import { USE_MOCKS } from '@/api/config';
 import { callLogService } from '@/api/services/callLog.service';
 
 const STUN_URL = import.meta.env.VITE_STUN_URL || 'stun:stun.l.google.com:19302';
@@ -58,6 +59,7 @@ export function useWebRTC() {
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
   const screenTrackRef = useRef<MediaStreamTrack | null>(null);
+  const pendingIceRef = useRef<RTCIceCandidateInit[]>([]);
   const activeCallRef = useRef<ActiveCallData | null>(null);
   activeCallRef.current = activeCall;
   const callStateRef = useRef<CallState>('idle');
@@ -90,6 +92,7 @@ export function useWebRTC() {
       } catch {}
       pcRef.current = null;
     }
+    pendingIceRef.current = [];
 
     setRemoteStream(null);
     setIsMuted(false);
@@ -191,22 +194,8 @@ export function useWebRTC() {
     setActiveCall(callData);
     setCallState('calling');
 
-    // Create RTCPeerConnection and offer
-    const pc = createPeerConnection(calleeId, callId);
-    if (pc) {
-      try {
-        const offer = await pc.createOffer();
-        await pc.setLocalDescription(offer);
-        socketClient.emit('webrtc:offer', {
-          targetUserId: calleeId,
-          senderUserId: currentUser.id,
-          signal: offer,
-          callId,
-        });
-      } catch (e) {
-        console.warn('Error creating WebRTC offer:', e);
-      }
-    }
+    // The offer is sent once the callee accepts; before that they have no peer connection to receive it.
+    createPeerConnection(calleeId, callId);
 
     // Emit call:request to signaling server
     const reqPayload: CallRequestPayload = {
@@ -270,6 +259,20 @@ export function useWebRTC() {
     setActiveCall(null);
   }, [activeCall, currentUser, cleanupStreamsAndPeer]);
 
+  // Cancel Call (Caller, before the callee answers)
+  const cancelCall = useCallback(() => {
+    if (!activeCall || !currentUser) return;
+
+    socketClient.emit('call:cancel', {
+      callId: activeCall.callId,
+      calleeId: activeCall.calleeId,
+    });
+
+    setCallState('ended');
+    cleanupStreamsAndPeer();
+    setActiveCall(null);
+  }, [activeCall, currentUser, cleanupStreamsAndPeer]);
+
   // End Call (Either party)
   const endCall = useCallback(() => {
     if (!activeCall || !currentUser) return;
@@ -285,7 +288,10 @@ export function useWebRTC() {
     };
 
     socketClient.emit('call:end', endPayload);
-    callLogService.createCallLog(endPayload).catch(() => {});
+    // Against the live backend the signaling server records the call; writing it here too would duplicate it
+    if (USE_MOCKS) {
+      callLogService.createCallLog(endPayload).catch(() => {});
+    }
 
     setCallState('ended');
     cleanupStreamsAndPeer();
@@ -353,12 +359,29 @@ export function useWebRTC() {
 
   // Socket event subscriptions
   useEffect(() => {
+    const isCurrentCall = (callId?: string) =>
+      !callId || callId === activeCallRef.current?.callId;
+
+    const flushPendingIce = async (pc: RTCPeerConnection) => {
+      const queued = pendingIceRef.current;
+      pendingIceRef.current = [];
+      for (const candidate of queued) {
+        try {
+          await pc.addIceCandidate(new RTCIceCandidate(candidate));
+        } catch (e) {
+          console.warn('Error adding ICE candidate:', e);
+        }
+      }
+    };
+
     const handleIncoming = (payload: CallRequestPayload) => {
       // Do not handle own outgoing call as incoming
       if (payload.callerId === currentUser?.id) return;
+      // The mock socket broadcasts to every tab, so ignore calls addressed to someone else
+      if (payload.calleeId && payload.calleeId !== currentUser?.id) return;
 
       // If busy in another call
-      if (callStateRef.current !== 'idle' && callStateRef.current !== 'ended') {
+      if (!['idle', 'ended', 'failed'].includes(callStateRef.current)) {
         socketClient.emit('call:response', {
           callId: payload.callId,
           callerId: payload.callerId,
@@ -382,17 +405,45 @@ export function useWebRTC() {
     };
 
     const handleResponse = async (payload: CallResponsePayload) => {
-      if (payload.accepted) {
-        setCallState('connected');
-      } else {
+      // Only the caller acts on a response; the callee already knows its own answer
+      if (payload.callerId !== currentUser?.id || payload.callId !== activeCallRef.current?.callId) {
+        return;
+      }
+      // Only the first answer counts; a later one (e.g. another device timing out) must not end the call
+      if (callStateRef.current !== 'calling') return;
+
+      if (!payload.accepted) {
         setCallState('ended');
         setPermissionError(payload.reason || 'Call was declined');
         cleanupStreamsAndPeer();
         setActiveCall(null);
+        return;
+      }
+
+      const pc = pcRef.current;
+      if (!pc) {
+        setCallState('connected');
+        return;
+      }
+
+      setCallState('connecting');
+      try {
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        socketClient.emit('webrtc:offer', {
+          targetUserId: payload.calleeId,
+          senderUserId: currentUser?.id,
+          signal: offer,
+          callId: payload.callId,
+        });
+      } catch (e) {
+        console.warn('Error creating WebRTC offer:', e);
       }
     };
 
-    const handleCallEnded = () => {
+    const handleCallEnded = (payload: { callId: string }) => {
+      // The mock socket broadcasts to every tab, so ignore the end of somebody else's call
+      if (!activeCallRef.current || payload?.callId !== activeCallRef.current.callId) return;
       setCallState('ended');
       cleanupStreamsAndPeer();
       setActiveCall(null);
@@ -400,11 +451,13 @@ export function useWebRTC() {
 
     const handleOffer = async (payload: WebRtcSignalPayload) => {
       if (payload.senderUserId && payload.senderUserId === currentUser?.id) return;
-      if (!pcRef.current) return;
+      const pc = pcRef.current;
+      if (!pc || !isCurrentCall(payload.callId)) return;
       try {
-        await pcRef.current.setRemoteDescription(new RTCSessionDescription(payload.signal));
-        const answer = await pcRef.current.createAnswer();
-        await pcRef.current.setLocalDescription(answer);
+        await pc.setRemoteDescription(new RTCSessionDescription(payload.signal));
+        await flushPendingIce(pc);
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
         socketClient.emit('webrtc:answer', {
           targetUserId: payload.senderUserId || activeCallRef.current?.callerId || '',
           senderUserId: currentUser?.id,
@@ -419,9 +472,11 @@ export function useWebRTC() {
 
     const handleAnswer = async (payload: WebRtcSignalPayload) => {
       if (payload.senderUserId && payload.senderUserId === currentUser?.id) return;
-      if (!pcRef.current) return;
+      const pc = pcRef.current;
+      if (!pc || !isCurrentCall(payload.callId)) return;
       try {
-        await pcRef.current.setRemoteDescription(new RTCSessionDescription(payload.signal));
+        await pc.setRemoteDescription(new RTCSessionDescription(payload.signal));
+        await flushPendingIce(pc);
         setCallState('connected');
       } catch (e) {
         console.warn('Error handling WebRTC answer:', e);
@@ -430,9 +485,15 @@ export function useWebRTC() {
 
     const handleIce = async (payload: WebRtcSignalPayload) => {
       if (payload.senderUserId && payload.senderUserId === currentUser?.id) return;
-      if (!pcRef.current) return;
+      const pc = pcRef.current;
+      if (!pc || !isCurrentCall(payload.callId)) return;
+      // addIceCandidate rejects until the remote description is set
+      if (!pc.remoteDescription) {
+        pendingIceRef.current.push(payload.signal);
+        return;
+      }
       try {
-        await pcRef.current.addIceCandidate(new RTCIceCandidate(payload.signal));
+        await pc.addIceCandidate(new RTCIceCandidate(payload.signal));
       } catch (e) {
         console.warn('Error adding ICE candidate:', e);
       }
@@ -442,6 +503,7 @@ export function useWebRTC() {
       setPermissionError(payload.message);
       setCallState('failed');
       cleanupStreamsAndPeer();
+      setActiveCall(null);
     };
 
     socketClient.on('call:incoming', handleIncoming);
@@ -463,7 +525,7 @@ export function useWebRTC() {
       socketClient.off('webrtc:ice', handleIce);
       socketClient.off('call:error', handleError);
     };
-  }, [callState, currentUser, cleanupStreamsAndPeer]);
+  }, [currentUser, cleanupStreamsAndPeer]);
 
   return {
     callState,
@@ -479,6 +541,7 @@ export function useWebRTC() {
     startCall,
     acceptCall,
     declineCall,
+    cancelCall,
     endCall,
     toggleMute,
     toggleCamera,

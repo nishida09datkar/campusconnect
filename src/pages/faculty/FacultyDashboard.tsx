@@ -34,7 +34,8 @@ export const FacultyDashboard: React.FC = () => {
   const assignments = db.assignments.filter((a) => classIds.includes(a.classId));
   const assignmentIds = assignments.map((a) => a.id);
   const pendingSubmissions = db.submissions.filter(
-    (s) => assignmentIds.includes(s.assignmentId) && s.status === 'SUBMITTED'
+    (s) =>
+      assignmentIds.includes(s.assignmentId) && (s.status === 'SUBMITTED' || s.status === 'LATE')
   );
 
   return (

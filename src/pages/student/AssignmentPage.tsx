@@ -49,7 +49,8 @@ export const AssignmentPage: React.FC = () => {
     try {
       setIsLoading(true);
       const assign = await assignmentService.getAssignmentById(assignmentId);
-      if (!assign) throw new Error('Assignment not found');
+      // A draft is not published yet, so for a student it does not exist
+      if (!assign || assign.status === 'DRAFT') throw new Error('Assignment not found');
       setAssignment(assign);
 
       const [cls, sub] = await Promise.all([
@@ -59,9 +60,11 @@ export const AssignmentPage: React.FC = () => {
 
       setClassroom(cls);
       setSubmission(sub);
-      if (sub?.note) {
-        setStudentNote(sub.note);
-      }
+      // The form belongs to this assignment: drop whatever was picked or typed for another one
+      setSelectedFileName('');
+      setSelectedFileSizeKb(0);
+      setStudentNote(sub?.note || '');
+      setErrorMessage('');
     } catch {
       dispatch(addToast({ type: 'error', message: 'Failed to load assignment details' }));
     } finally {
@@ -335,99 +338,101 @@ export const AssignmentPage: React.FC = () => {
               </div>
             )}
 
-            {/* Submission Form */}
-            <form onSubmit={handleSubmitWork} className="space-y-4">
-              {errorMessage && (
-                <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 text-xs font-medium">
-                  {errorMessage}
-                </div>
-              )}
-
-              {/* File Upload Selector */}
-              <div className="space-y-2">
-                <label className="block text-xs font-semibold text-foreground/80">
-                  {isSubmitted ? 'Replace / Upload Solution File' : 'Attach Solution File'}
-                </label>
-
-                {/* Selected File Preview */}
-                {selectedFileName ? (
-                  <div className="p-3 rounded-xl bg-primary-500/10 border border-primary-500/30 flex items-center justify-between">
-                    <div className="flex items-center gap-2 truncate text-xs text-primary-700 dark:text-primary-300 font-semibold">
-                      <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                      <span className="truncate">{selectedFileName}</span>
-                      <span className="text-[10px] text-muted-foreground font-normal">({selectedFileSizeKb} KB)</span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedFileName('')}
-                      className="text-xs text-muted-foreground hover:text-rose-500"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {/* Native file input */}
-                    <label className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-border hover:border-primary-500/50 rounded-xl cursor-pointer bg-muted/20 hover:bg-muted/40 transition-colors">
-                      <UploadCloud className="w-6 h-6 text-muted-foreground mb-1" />
-                      <span className="text-xs font-medium text-foreground">Click to browse file</span>
-                      <span className="text-[10px] text-muted-foreground">ZIP, PDF, TS, or JS code file</span>
-                      <input
-                        type="file"
-                        className="hidden"
-                        onChange={handleSelectLocalFile}
-                      />
-                    </label>
-
-                    {/* Quick Mock File Templates for Pair-Programming Testing */}
-                    <div className="space-y-1">
-                      <span className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider">
-                        Or pick a test file:
-                      </span>
-                      <div className="flex flex-wrap gap-1.5">
-                        {[
-                          `${user?.name?.split(' ')[0] || 'Aryan'}_Solution.zip`,
-                          'Lab_Report.pdf',
-                          'App_Submission.tsx',
-                        ].map((tmpl) => (
-                          <button
-                            type="button"
-                            key={tmpl}
-                            onClick={() => handlePickMockTemplate(tmpl)}
-                            className="px-2 py-1 rounded-md bg-muted text-[11px] font-medium text-foreground hover:bg-primary-500/10 hover:text-primary-600 transition-colors border border-border"
-                          >
-                            + {tmpl}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
+            {/* Submission Form: graded work is final, so there is nothing left to turn in */}
+            {!isGraded && (
+              <form onSubmit={handleSubmitWork} className="space-y-4">
+                {errorMessage && (
+                  <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 text-xs font-medium">
+                    {errorMessage}
                   </div>
                 )}
-              </div>
 
-              {/* Private Student Comment / Note */}
-              <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-foreground/80 flex items-center gap-1.5">
-                  <MessageSquare className="w-3.5 h-3.5 text-muted-foreground" /> Private Note to Instructor
-                </label>
-                <textarea
-                  value={studentNote}
-                  onChange={(e) => setStudentNote(e.target.value)}
-                  placeholder="Add any notes about your implementation, test coverage, or execution instructions..."
-                  rows={2}
-                  className="w-full rounded-xl border border-input bg-card p-3 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                />
-              </div>
+                {/* File Upload Selector */}
+                <div className="space-y-2">
+                  <label className="block text-xs font-semibold text-foreground/80">
+                    {isSubmitted ? 'Replace / Upload Solution File' : 'Attach Solution File'}
+                  </label>
 
-              {/* Submit / Resubmit Button */}
-              <Button
-                type="submit"
-                isLoading={isSubmitting}
-                className="w-full shadow-sm text-xs font-bold h-10"
-              >
-                {isSubmitted ? 'Resubmit Assignment' : 'Turn In Work'}
-              </Button>
-            </form>
+                  {/* Selected File Preview */}
+                  {selectedFileName ? (
+                    <div className="p-3 rounded-xl bg-primary-500/10 border border-primary-500/30 flex items-center justify-between">
+                      <div className="flex items-center gap-2 truncate text-xs text-primary-700 dark:text-primary-300 font-semibold">
+                        <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                        <span className="truncate">{selectedFileName}</span>
+                        <span className="text-[10px] text-muted-foreground font-normal">({selectedFileSizeKb} KB)</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedFileName('')}
+                        className="text-xs text-muted-foreground hover:text-rose-500"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {/* Native file input */}
+                      <label className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-border hover:border-primary-500/50 rounded-xl cursor-pointer bg-muted/20 hover:bg-muted/40 transition-colors">
+                        <UploadCloud className="w-6 h-6 text-muted-foreground mb-1" />
+                        <span className="text-xs font-medium text-foreground">Click to browse file</span>
+                        <span className="text-[10px] text-muted-foreground">ZIP, PDF, TS, or JS code file</span>
+                        <input
+                          type="file"
+                          className="hidden"
+                          onChange={handleSelectLocalFile}
+                        />
+                      </label>
+
+                      {/* Quick Mock File Templates for Pair-Programming Testing */}
+                      <div className="space-y-1">
+                        <span className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider">
+                          Or pick a test file:
+                        </span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {[
+                            `${user?.name?.split(' ')[0] || 'Aryan'}_Solution.zip`,
+                            'Lab_Report.pdf',
+                            'App_Submission.tsx',
+                          ].map((tmpl) => (
+                            <button
+                              type="button"
+                              key={tmpl}
+                              onClick={() => handlePickMockTemplate(tmpl)}
+                              className="px-2 py-1 rounded-md bg-muted text-[11px] font-medium text-foreground hover:bg-primary-500/10 hover:text-primary-600 transition-colors border border-border"
+                            >
+                              + {tmpl}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Private Student Comment / Note */}
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold text-foreground/80 flex items-center gap-1.5">
+                    <MessageSquare className="w-3.5 h-3.5 text-muted-foreground" /> Private Note to Instructor
+                  </label>
+                  <textarea
+                    value={studentNote}
+                    onChange={(e) => setStudentNote(e.target.value)}
+                    placeholder="Add any notes about your implementation, test coverage, or execution instructions..."
+                    rows={2}
+                    className="w-full rounded-xl border border-input bg-card p-3 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  />
+                </div>
+
+                {/* Submit / Resubmit Button */}
+                <Button
+                  type="submit"
+                  isLoading={isSubmitting}
+                  className="w-full shadow-sm text-xs font-bold h-10"
+                >
+                  {isSubmitted ? 'Resubmit Assignment' : 'Turn In Work'}
+                </Button>
+              </form>
+            )}
           </Card>
         </div>
       </div>
