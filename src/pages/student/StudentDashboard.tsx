@@ -31,6 +31,37 @@ export const StudentDashboard: React.FC = () => {
   // Graded submissions
   const gradedSubmissions = submissions.filter((s) => s.status === 'GRADED');
 
+  const kpis = [
+    {
+      title: 'Enrolled Classes',
+      value: studentClasses.length,
+      icon: BookOpen,
+      color: 'bg-sky-500/10 text-sky-600',
+      to: '/student/classes',
+    },
+    {
+      title: 'Assignments Due',
+      value: assignments.length,
+      icon: Clock,
+      color: 'bg-amber-500/10 text-amber-600',
+      to: '/student/assignments',
+    },
+    {
+      title: 'Graded Lab Work',
+      value: gradedSubmissions.length,
+      icon: Award,
+      color: 'bg-emerald-500/10 text-emerald-600',
+      to: '/student/assignments',
+    },
+    {
+      title: 'Campus Doubts & Chat',
+      value: 'Online',
+      icon: MessageSquare,
+      color: 'bg-indigo-500/10 text-indigo-600',
+      to: '/chat',
+    },
+  ];
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -49,53 +80,26 @@ export const StudentDashboard: React.FC = () => {
 
       {/* KPI Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-5 flex items-center justify-between">
-            <div className="space-y-1">
-              <span className="text-xs font-semibold text-muted-foreground uppercase">Enrolled Classes</span>
-              <p className="text-2xl font-extrabold text-foreground">{studentClasses.length}</p>
-            </div>
-            <div className="p-3 rounded-xl bg-sky-500/10 text-sky-600">
-              <BookOpen className="w-5 h-5" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-5 flex items-center justify-between">
-            <div className="space-y-1">
-              <span className="text-xs font-semibold text-muted-foreground uppercase">Assignments Due</span>
-              <p className="text-2xl font-extrabold text-foreground">{assignments.length}</p>
-            </div>
-            <div className="p-3 rounded-xl bg-amber-500/10 text-amber-600">
-              <Clock className="w-5 h-5" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-5 flex items-center justify-between">
-            <div className="space-y-1">
-              <span className="text-xs font-semibold text-muted-foreground uppercase">Graded Lab Work</span>
-              <p className="text-2xl font-extrabold text-foreground">{gradedSubmissions.length}</p>
-            </div>
-            <div className="p-3 rounded-xl bg-emerald-500/10 text-emerald-600">
-              <Award className="w-5 h-5" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-5 flex items-center justify-between">
-            <div className="space-y-1">
-              <span className="text-xs font-semibold text-muted-foreground uppercase">Campus Doubts & Chat</span>
-              <p className="text-2xl font-extrabold text-foreground">Online</p>
-            </div>
-            <div className="p-3 rounded-xl bg-indigo-500/10 text-indigo-600">
-              <MessageSquare className="w-5 h-5" />
-            </div>
-          </CardContent>
-        </Card>
+        {kpis.map((kpi) => {
+          const Icon = kpi.icon;
+          return (
+            <Link key={kpi.title} to={kpi.to} className="group">
+              <Card className="h-full hover:border-primary-500/40 transition-all hover:shadow-md">
+                <CardContent className="p-5 flex items-center justify-between">
+                  <div className="space-y-1">
+                    <span className="text-xs font-semibold text-muted-foreground uppercase group-hover:text-primary-600 transition-colors">
+                      {kpi.title}
+                    </span>
+                    <p className="text-2xl font-extrabold text-foreground">{kpi.value}</p>
+                  </div>
+                  <div className={`p-3 rounded-xl ${kpi.color}`}>
+                    <Icon className="w-5 h-5" />
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+          );
+        })}
       </div>
 
       {/* Enrolled Classes Grid */}
