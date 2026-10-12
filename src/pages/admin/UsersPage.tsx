@@ -211,7 +211,6 @@ export const UsersPage: React.FC = () => {
           division: formRole === 'STUDENT' ? formDivision : undefined,
           employeeId: formRole !== 'STUDENT' ? formEmpId.trim() : undefined,
           designation: formRole !== 'STUDENT' ? formDesignation.trim() : undefined,
-          password: formPassword.trim() || undefined,
         });
         dispatch(
           addToast({

@@ -85,10 +85,9 @@ export const userService = {
     return user ? { ...user } : null;
   },
 
-<<<<<<< Updated upstream
-  async createUser(data: CreateUserData): Promise<User> {
+  async createUser(data: CreateUserData): Promise<User & { temporaryPassword?: string }> {
     if (!USE_MOCKS) {
-      const res = await apiClient.post<User>('/api/users', data);
+      const res = await apiClient.post<User & { temporaryPassword?: string }>('/api/users', data);
       const newUser = res.data;
       const idx = db.users.findIndex((u) => u.id === newUser.id);
       if (idx !== -1) {
@@ -97,12 +96,6 @@ export const userService = {
         db.users.push({ ...newUser });
       }
       return newUser;
-=======
-  async createUser(data: Omit<User, 'id'> & { password?: string }): Promise<User & { temporaryPassword?: string }> {
-    if (!USE_MOCKS) {
-      const res = await apiClient.post<User & { temporaryPassword?: string }>('/api/users', data);
-      return res.data;
->>>>>>> Stashed changes
     }
 
     await delay(120, 250);
@@ -135,7 +128,6 @@ export const userService = {
     return { ...newUser, temporaryPassword: defaultPass };
   },
 
-<<<<<<< Updated upstream
   async updateUser(id: string, updates: UpdateUserData): Promise<User> {
     if (!USE_MOCKS) {
       const res = await apiClient.put<User>(`/api/users/${id}`, updates);
@@ -145,12 +137,6 @@ export const userService = {
         db.users[idx] = { ...updated };
       }
       return updated;
-=======
-  async updateUser(id: string, updates: Partial<User> & { password?: string }): Promise<User> {
-    if (!USE_MOCKS) {
-      const res = await apiClient.put<User>(`/api/users/${id}`, updates);
-      return res.data;
->>>>>>> Stashed changes
     }
 
     await delay(100, 200);
@@ -180,7 +166,6 @@ export const userService = {
 
   async toggleUserStatus(id: string, isActive?: boolean): Promise<User> {
     if (!USE_MOCKS) {
-<<<<<<< Updated upstream
       const res = await apiClient.patch<User>(`/api/users/${id}/status`, { isActive });
       const updated = res.data;
       const idx = db.users.findIndex((u) => u.id === id);
@@ -188,10 +173,6 @@ export const userService = {
         db.users[idx] = { ...updated };
       }
       return updated;
-=======
-      const res = await apiClient.patch<User>(`/api/users/${id}/status`);
-      return res.data;
->>>>>>> Stashed changes
     }
 
     await delay(80, 160);
@@ -206,18 +187,9 @@ export const userService = {
 
   async getDepartmentFaculty(departmentId: string): Promise<User[]> {
     if (!USE_MOCKS) {
-<<<<<<< HEAD
-      const res = await apiClient.get<User[]>('/api/users', {
-        params: { role: 'FACULTY', departmentId },
-      });
-      return res.data;
-    }
-
-=======
       const res = await userService.getUsers({ departmentId, role: 'FACULTY', pageSize: 100 });
       return res.items;
     }
->>>>>>> origin/aarya/phase-6-updates-2026-10-12
     await delay(50, 110);
     return db.users
       .filter((u) => u.departmentId === departmentId && u.role === 'FACULTY')
@@ -226,18 +198,9 @@ export const userService = {
 
   async getDepartmentStudents(departmentId: string): Promise<User[]> {
     if (!USE_MOCKS) {
-<<<<<<< HEAD
-      const res = await apiClient.get<User[]>('/api/users', {
-        params: { role: 'STUDENT', departmentId },
-      });
-      return res.data;
-    }
-
-=======
       const res = await userService.getUsers({ departmentId, role: 'STUDENT', pageSize: 100 });
       return res.items;
     }
->>>>>>> origin/aarya/phase-6-updates-2026-10-12
     await delay(50, 110);
     return db.users
       .filter((u) => u.departmentId === departmentId && u.role === 'STUDENT')
@@ -246,16 +209,9 @@ export const userService = {
 
   async getPotentialHods(): Promise<User[]> {
     if (!USE_MOCKS) {
-<<<<<<< HEAD
-      const res = await apiClient.get<User[]>('/api/users');
-      return res.data.filter((u) => u.role === 'HOD' || u.role === 'FACULTY');
-    }
-
-=======
       const res = await userService.getUsers({ pageSize: 100 });
       return res.items.filter((u) => u.role === 'HOD' || u.role === 'FACULTY');
     }
->>>>>>> origin/aarya/phase-6-updates-2026-10-12
     await delay(40, 90);
     return db.users
       .filter((u) => u.role === 'HOD' || u.role === 'FACULTY')
