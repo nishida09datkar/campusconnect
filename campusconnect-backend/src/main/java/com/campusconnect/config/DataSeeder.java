@@ -59,7 +59,7 @@ public class DataSeeder implements CommandLineRunner {
                 new User("user-fac-anita", "anita@campus.test", facPassword, "Prof. Anita Patil", Role.FACULTY, "dept-ce"),
                 new User("user-fac-vivek", "vivek@campus.test", facPassword, "Prof. Vivek Shah", Role.FACULTY, "dept-it"),
                 new User("user-fac-sara", "sara@campus.test", facPassword, "Prof. Sara Khan", Role.FACULTY, "dept-it"),
-                student("user-stu-1", "student1@campus.test", stuPassword, "Aarav Sharma", "dept-ce", 3),
+                student("user-stu-1", "student1@campus.test", stuPassword, "Aryan Sharma", "dept-ce", 3),
                 student("user-stu-2", "student2@campus.test", stuPassword, "Diya Patel", "dept-ce", 3),
                 student("user-stu-3", "student3@campus.test", stuPassword, "Ananya Verma", "dept-ce", 3),
                 student("user-stu-4", "student4@campus.test", stuPassword, "Ishaan Singh", "dept-ce", 3),
