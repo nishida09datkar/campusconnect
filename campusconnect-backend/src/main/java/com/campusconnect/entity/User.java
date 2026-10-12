@@ -15,6 +15,7 @@ public class User {
     private String email;
 
     @Column(nullable = false)
+    @com.fasterxml.jackson.annotation.JsonProperty(access = com.fasterxml.jackson.annotation.JsonProperty.Access.WRITE_ONLY)
     private String password;
 
     @Column(nullable = false, length = 128)
@@ -68,6 +69,7 @@ public class User {
     public String getDepartmentId() { return departmentId; }
     public void setDepartmentId(String departmentId) { this.departmentId = departmentId; }
 
+    @com.fasterxml.jackson.annotation.JsonProperty("avatarUrl")
     public String getAvatar() { return avatar; }
     public void setAvatar(String avatar) { this.avatar = avatar; }
 
@@ -77,6 +79,7 @@ public class User {
     public Integer getSemester() { return semester; }
     public void setSemester(Integer semester) { this.semester = semester; }
 
+    @com.fasterxml.jackson.annotation.JsonProperty("isActive")
     public boolean isActive() { return active; }
     public void setActive(boolean active) { this.active = active; }
 

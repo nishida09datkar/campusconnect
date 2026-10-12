@@ -42,6 +42,24 @@ public class UserController {
         return ResponseEntity.ok(Map.of("allowed", true));
     }
 
+    @GetMapping
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<java.util.List<User>> getAllUsers(
+            @RequestParam(required = false) com.campusconnect.entity.Role role,
+            @RequestParam(required = false) String departmentId
+    ) {
+        if (role != null && departmentId != null) {
+            return ResponseEntity.ok(userRepository.findByDepartmentId(departmentId).stream()
+                    .filter(u -> u.getRole() == role)
+                    .collect(java.util.stream.Collectors.toList()));
+        } else if (role != null) {
+            return ResponseEntity.ok(userRepository.findByRole(role));
+        } else if (departmentId != null) {
+            return ResponseEntity.ok(userRepository.findByDepartmentId(departmentId));
+        }
+        return ResponseEntity.ok(userRepository.findAll());
+    }
+
     @GetMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<User> getUserById(@PathVariable String id) {

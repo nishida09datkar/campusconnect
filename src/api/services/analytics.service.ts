@@ -13,7 +13,7 @@ const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 export const analyticsService = {
   async getAdminAnalytics(): Promise<AdminAnalytics> {
     if (!USE_MOCKS) {
-      const res = await apiClient.get<AdminAnalytics>('/analytics/admin');
+      const res = await apiClient.get<AdminAnalytics>('/api/analytics/admin');
       return res.data;
     }
 
@@ -51,7 +51,7 @@ export const analyticsService = {
 
   async getHodAnalytics(departmentId?: string): Promise<HodAnalytics> {
     if (!USE_MOCKS) {
-      const res = await apiClient.get<HodAnalytics>('/analytics/hod', {
+      const res = await apiClient.get<HodAnalytics>('/api/analytics/hod', {
         params: { departmentId },
       });
       return res.data;
@@ -82,7 +82,7 @@ export const analyticsService = {
 
   async getFacultyAnalytics(): Promise<FacultyAnalytics> {
     if (!USE_MOCKS) {
-      const res = await apiClient.get<FacultyAnalytics>('/analytics/faculty');
+      const res = await apiClient.get<FacultyAnalytics>('/api/analytics/faculty');
       return res.data;
     }
 
@@ -125,7 +125,7 @@ export const analyticsService = {
 
   async getStudentAnalytics(): Promise<StudentAnalytics> {
     if (!USE_MOCKS) {
-      const res = await apiClient.get<StudentAnalytics>('/analytics/student');
+      const res = await apiClient.get<StudentAnalytics>('/api/analytics/student');
       return res.data;
     }
 
