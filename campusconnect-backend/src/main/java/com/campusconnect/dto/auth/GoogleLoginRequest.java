@@ -13,6 +13,9 @@ public class GoogleLoginRequest {
     @NotBlank(message = "Google ID token is required")
     private String idToken;
 
+    private String role;
+    private String departmentId;
+
     public GoogleLoginRequest() {}
 
     public GoogleLoginRequest(String idToken) {
@@ -25,5 +28,21 @@ public class GoogleLoginRequest {
 
     public void setIdToken(String idToken) {
         this.idToken = idToken;
+    }
+
+    public String getRole() {
+        return role;
+    }
+
+    public void setRole(String role) {
+        this.role = role;
+    }
+
+    public String getDepartmentId() {
+        return departmentId;
+    }
+
+    public void setDepartmentId(String departmentId) {
+        this.departmentId = departmentId;
     }
 }

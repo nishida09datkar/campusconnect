@@ -100,9 +100,34 @@ public class AuthService {
         }
 
         String email = payload.getEmail().toLowerCase();
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new BadCredentialsException(
-                        "No CampusConnect account found for " + email + ". Ask your administrator to create one first."));
+        User user = userRepository.findByEmail(email).orElse(null);
+
+        if (user == null) {
+            // Auto-register new user authenticated with verified Google account
+            String name = (String) payload.get("name");
+            if (name == null || name.isBlank()) {
+                name = email.split("@")[0];
+            }
+            String picture = (String) payload.get("picture");
+
+            com.campusconnect.entity.Role role = com.campusconnect.entity.Role.STUDENT;
+            if (request.getRole() != null && !request.getRole().isBlank()) {
+                try {
+                    role = com.campusconnect.entity.Role.valueOf(request.getRole().toUpperCase());
+                } catch (IllegalArgumentException ignored) {}
+            }
+
+            String deptId = request.getDepartmentId() != null && !request.getDepartmentId().isBlank()
+                    ? request.getDepartmentId() : "dept-ce";
+
+            String newId = "user-" + role.name().toLowerCase() + "-" + System.currentTimeMillis();
+            String randomPass = passwordEncoder.encode(java.util.UUID.randomUUID().toString());
+
+            user = new User(newId, email, randomPass, name, role, deptId);
+            user.setAvatar(picture);
+            user.setActive(true);
+            user = userRepository.save(user);
+        }
 
         if (!user.isActive()) {
             throw new BadCredentialsException("This account has been deactivated");
