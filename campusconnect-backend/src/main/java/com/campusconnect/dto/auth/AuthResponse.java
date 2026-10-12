@@ -1,5 +1,6 @@
 package com.campusconnect.dto.auth;
 
+import com.campusconnect.dto.user.UserDto;
 import com.campusconnect.entity.Role;
 
 public class AuthResponse {
@@ -9,6 +10,7 @@ public class AuthResponse {
     private String name;
     private Role role;
     private String departmentId;
+    private UserDto user;
 
     public AuthResponse() {}
 
@@ -19,6 +21,16 @@ public class AuthResponse {
         this.name = name;
         this.role = role;
         this.departmentId = departmentId;
+    }
+
+    public AuthResponse(String token, String userId, String email, String name, Role role, String departmentId, UserDto user) {
+        this.token = token;
+        this.userId = userId;
+        this.email = email;
+        this.name = name;
+        this.role = role;
+        this.departmentId = departmentId;
+        this.user = user;
     }
 
     public String getToken() { return token; }
@@ -38,4 +50,7 @@ public class AuthResponse {
 
     public String getDepartmentId() { return departmentId; }
     public void setDepartmentId(String departmentId) { this.departmentId = departmentId; }
+
+    public UserDto getUser() { return user; }
+    public void setUser(UserDto user) { this.user = user; }
 }

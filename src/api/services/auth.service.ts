@@ -80,6 +80,13 @@ export const authService = {
       email: authData.user.email,
       role: authData.user.role,
     });
+    // Keep local cache synchronized with live MySQL user data
+    const idx = db.users.findIndex((u) => u.id === authData.user.id);
+    if (idx !== -1) {
+      db.users[idx] = { ...authData.user };
+    } else {
+      db.users.push({ ...authData.user });
+    }
     return authData;
   },
 
@@ -150,7 +157,14 @@ export const authService = {
     }
 
     const response = await apiClient.get<User>('/api/auth/me');
-    return response.data;
+    const remoteUser = response.data;
+    const idx = db.users.findIndex((u) => u.id === remoteUser.id);
+    if (idx !== -1) {
+      db.users[idx] = { ...remoteUser };
+    } else {
+      db.users.push({ ...remoteUser });
+    }
+    return remoteUser;
   },
 
   async refreshToken(): Promise<{ accessToken: string }> {

@@ -1,3 +1,5 @@
+import { apiClient } from '../axios';
+import { USE_MOCKS } from '../config';
 import { db } from '../mock/db';
 import { delay } from '../mock/delay';
 import { User, Role, PaginatedResponse } from '@/types';
@@ -10,8 +12,27 @@ export interface UserFilterParams {
   pageSize?: number;
 }
 
+export type CreateUserData = Omit<User, 'id'> & { password?: string };
+export type UpdateUserData = Partial<User> & { password?: string };
+
 export const userService = {
   async getUsers(params: UserFilterParams = {}): Promise<PaginatedResponse<User>> {
+    if (!USE_MOCKS) {
+      const res = await apiClient.get<PaginatedResponse<User>>('/api/users', { params });
+      // Keep local mock cache in sync for LMS references
+      if (res.data?.items) {
+        res.data.items.forEach((remoteUser) => {
+          const idx = db.users.findIndex((u) => u.id === remoteUser.id);
+          if (idx !== -1) {
+            db.users[idx] = { ...remoteUser };
+          } else {
+            db.users.push({ ...remoteUser });
+          }
+        });
+      }
+      return res.data;
+    }
+
     await delay(70, 150);
     const { role, departmentId, q, page = 1, pageSize = 20 } = params;
 
@@ -50,12 +71,33 @@ export const userService = {
   },
 
   async getUserById(id: string): Promise<User | null> {
+    if (!USE_MOCKS) {
+      try {
+        const res = await apiClient.get<User>(`/api/users/${id}`);
+        return res.data;
+      } catch {
+        return null;
+      }
+    }
+
     await delay(40, 90);
     const user = db.users.find((u) => u.id === id);
     return user ? { ...user } : null;
   },
 
-  async createUser(data: Omit<User, 'id'>): Promise<User> {
+  async createUser(data: CreateUserData): Promise<User> {
+    if (!USE_MOCKS) {
+      const res = await apiClient.post<User>('/api/users', data);
+      const newUser = res.data;
+      const idx = db.users.findIndex((u) => u.id === newUser.id);
+      if (idx !== -1) {
+        db.users[idx] = { ...newUser };
+      } else {
+        db.users.push({ ...newUser });
+      }
+      return newUser;
+    }
+
     await delay(120, 250);
 
     const email = data.email.trim().toLowerCase();
@@ -85,7 +127,17 @@ export const userService = {
     return { ...newUser };
   },
 
-  async updateUser(id: string, updates: Partial<User>): Promise<User> {
+  async updateUser(id: string, updates: UpdateUserData): Promise<User> {
+    if (!USE_MOCKS) {
+      const res = await apiClient.put<User>(`/api/users/${id}`, updates);
+      const updated = res.data;
+      const idx = db.users.findIndex((u) => u.id === id);
+      if (idx !== -1) {
+        db.users[idx] = { ...updated };
+      }
+      return updated;
+    }
+
     await delay(100, 200);
     const index = db.users.findIndex((u) => u.id === id);
     if (index === -1) {
@@ -112,6 +164,16 @@ export const userService = {
   },
 
   async toggleUserStatus(id: string, isActive?: boolean): Promise<User> {
+    if (!USE_MOCKS) {
+      const res = await apiClient.patch<User>(`/api/users/${id}/status`, { isActive });
+      const updated = res.data;
+      const idx = db.users.findIndex((u) => u.id === id);
+      if (idx !== -1) {
+        db.users[idx] = { ...updated };
+      }
+      return updated;
+    }
+
     await delay(80, 160);
     const user = db.users.find((u) => u.id === id);
     if (!user) {
@@ -123,6 +185,10 @@ export const userService = {
   },
 
   async getDepartmentFaculty(departmentId: string): Promise<User[]> {
+    if (!USE_MOCKS) {
+      const res = await userService.getUsers({ departmentId, role: 'FACULTY', pageSize: 100 });
+      return res.items;
+    }
     await delay(50, 110);
     return db.users
       .filter((u) => u.departmentId === departmentId && u.role === 'FACULTY')
@@ -130,6 +196,10 @@ export const userService = {
   },
 
   async getDepartmentStudents(departmentId: string): Promise<User[]> {
+    if (!USE_MOCKS) {
+      const res = await userService.getUsers({ departmentId, role: 'STUDENT', pageSize: 100 });
+      return res.items;
+    }
     await delay(50, 110);
     return db.users
       .filter((u) => u.departmentId === departmentId && u.role === 'STUDENT')
@@ -137,6 +207,10 @@ export const userService = {
   },
 
   async getPotentialHods(): Promise<User[]> {
+    if (!USE_MOCKS) {
+      const res = await userService.getUsers({ pageSize: 100 });
+      return res.items.filter((u) => u.role === 'HOD' || u.role === 'FACULTY');
+    }
     await delay(40, 90);
     return db.users
       .filter((u) => u.role === 'HOD' || u.role === 'FACULTY')

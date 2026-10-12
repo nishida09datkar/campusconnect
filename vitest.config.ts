@@ -13,6 +13,9 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'jsdom',
+    env: {
+      VITE_USE_MOCKS: 'true',
+    },
     setupFiles: ['./src/test/setup.ts'],
     css: false,
     coverage: {
